@@ -14,18 +14,28 @@ cd "$ROOT" || { echo "FAIL setup: cannot cd to $ROOT"; exit 1; }
 KB_MAX_BYTES=40000
 CLAUDE_MAX_LINES=200
 CLAUDE_MAX_BYTES=16000
-TAG_RE='\[(MEASURED|SOURCE|CODE|CL|3P|ASSUMPTION|OF|IS|BLOG)\b|\[S:'
+TAG_RE='\[(MEASURED|SOURCE|CODE|CL|3P|ASSUMPTION|OF|IS|BLOG)(:|\])|\[S:'
 HEADER_RE='^## [0-9]{4}-[0-9]{2}-[0-9]{2} — [^[:space:]].*$'
+TOMORROW=$(date -u -d tomorrow +%F 2>/dev/null || date -u -v+1d +%F)   # GNU || BSD/macOS
+
+valid_date() { # pure bash, no GNU date: YYYY-MM-DD is a real calendar date
+  local y=$((10#${1:0:4})) m=$((10#${1:5:2})) d=$((10#${1:8:2})) max=31
+  [ "$m" -ge 1 ] && [ "$m" -le 12 ] && [ "$d" -ge 1 ] || return 1
+  case $m in 4|6|9|11) max=30 ;; 2) max=28; { [ $((y % 4)) -eq 0 ] && [ $((y % 100)) -ne 0 ]; } || [ $((y % 400)) -eq 0 ] && max=29 ;; esac
+  [ "$d" -le "$max" ]
+}
 
 fails=0
-fail() { echo "FAIL $*"; fails=$((fails + 1)); }
+fail() { echo "FAIL $(printf '%s' "$*" | tr -d '\000-\010\013-\037\177')"; fails=$((fails + 1)); }
 
 bytes() { wc -c < "$1" | tr -d ' '; }
 
 check_log() { # $1 = findings.md or exceptions.md
-  local f="$1" in_fence=0 n=0 hdr="" hdr_line=0 tagged=0 line
+  local f="$1" in_fence=0 in_cmt=0 n=0 hdr="" hdr_line=0 tagged=0 line text
   [ -f "$f" ] || { fail "files: $f missing"; return; }
-  # Entry = "## " line up to the next "## " line or EOF. Lines inside ``` fences are ignored.
+  # Entry = any "#" heading line after line 1 (must be "## YYYY-MM-DD — title") up to the
+  # next heading or EOF. Tags inside ``` / ~~~ fences, <!-- comments --> and `inline code`
+  # do not count; an unclosed fence or comment is itself a failure.
   close_entry() {
     if [ -n "$hdr" ] && [ "$tagged" -eq 0 ]; then
       fail "files: $f:$hdr_line entry has no evidence tag: $hdr"
@@ -33,34 +43,46 @@ check_log() { # $1 = findings.md or exceptions.md
   }
   while IFS= read -r line || [ -n "$line" ]; do
     n=$((n + 1))
-    if [[ "$line" =~ ^\`\`\` ]]; then in_fence=$((1 - in_fence)); continue; fi
+    if [ "$in_cmt" -eq 0 ] && [[ "$line" =~ ^[[:space:]]*(\`\`\`|~~~) ]]; then in_fence=$((1 - in_fence)); continue; fi
     [ "$in_fence" -eq 1 ] && continue
-    if [[ "$line" =~ ^##[[:space:]] ]] || [[ "$line" =~ ^##$ ]]; then
+    text="$line"
+    if [ "$in_cmt" -eq 1 ]; then
+      [[ "$text" == *"-->"* ]] || continue
+      text="${text#*-->}"; in_cmt=0
+    fi
+    text=$(printf '%s' "$text" | sed -e 's/<!--.*-->//g' -e 's/`[^`]*`//g')
+    if [[ "$text" == *"<!--"* ]]; then text="${text%%<!--*}"; in_cmt=1; fi
+    if [ "$n" -gt 1 ] && [[ "$line" =~ ^[[:space:]]{0,3}# ]]; then
       close_entry
       hdr="$line"; hdr_line=$n; tagged=0
       if ! printf '%s\n' "$line" | grep -Eq "$HEADER_RE"; then
         fail "files: $f:$n bad header (want '## YYYY-MM-DD — title'): $line"
       else
         local d="${line:3:10}"
-        date -u -d "$d" +%F >/dev/null 2>&1 && [ "$(date -u -d "$d" +%F)" = "$d" ] \
-          || fail "files: $f:$n invalid date in header: $line"
+        if ! valid_date "$d"; then
+          fail "files: $f:$n invalid date in header: $line"
+        elif [[ "$d" > "$TOMORROW" ]]; then
+          fail "files: $f:$n future date in header: $line"
+        fi
       fi
       continue
     fi
-    if [ -n "$hdr" ] && printf '%s\n' "$line" | grep -Eq "$TAG_RE"; then tagged=1; fi
+    if [ -n "$hdr" ] && printf '%s\n' "$text" | grep -Eq "$TAG_RE"; then tagged=1; fi
   done < "$f"
   close_entry
+  [ "$in_fence" -eq 0 ] || fail "files: $f has an unclosed code fence"
+  [ "$in_cmt" -eq 0 ] || fail "files: $f has an unclosed <!-- comment"
 }
 
 check_files() {
-  # 1. Knowledge files: each <= 40,000 bytes (one Read call, CLAUDE.md "Updating the KB").
+  # 1. Knowledge files (any depth): each <= 40,000 bytes (one Read call, CLAUDE.md "Updating the KB").
   local f found=0
-  for f in knowledge/*.md; do
-    [ -e "$f" ] || continue
+  while IFS= read -r -d '' f; do
     found=1
+    if [ ! -f "$f" ]; then fail "files: $f is not a regular file"; continue; fi
     local b; b=$(bytes "$f")
     [ "$b" -le "$KB_MAX_BYTES" ] || fail "files: $f is $b bytes > $KB_MAX_BYTES"
-  done
+  done < <(find knowledge -name '*.md' -print0 2>/dev/null)
   [ "$found" -eq 1 ] || fail "files: no knowledge/*.md found"
 
   # 2. CLAUDE.md: <= 200 lines and <= 16,000 bytes.
@@ -77,8 +99,9 @@ check_files() {
   check_log findings.md
   check_log exceptions.md
 
-  # 4. Hooks and scripts executable, on disk and in the git index (a 100644 file
-  #    loses +x on the next clone and the hook then fails silently).
+  # 4. Hooks and scripts executable, on disk and in the git index: a 100644 file
+  #    loses +x on the next clone and the hook then fails as a non-blocking error
+  #    [SOURCE: https://code.claude.com/docs/en/hooks.md, 2026-10-06].
   local idx
   for f in .claude/hooks/* scripts/*.sh; do
     [ -f "$f" ] || continue
@@ -89,16 +112,26 @@ check_files() {
     fi
   done
 
-  # 5. Hook wiring: settings.json parses, Stop and SessionStart are wired, every
-  #    ${CLAUDE_PROJECT_DIR} command path exists and is executable.
+  # 5. Hook wiring: settings.json parses, Stop and SessionStart are wired with the exact
+  #    commands, no disableAllHooks, and every other command that starts with
+  #    ${CLAUDE_PROJECT_DIR} points to an existing executable.
   local s=.claude/settings.json
   if [ ! -f "$s" ]; then fail "files: $s missing"; return; fi
   if ! command -v jq >/dev/null 2>&1; then fail "files: jq not installed, cannot validate $s"; return; fi
   if ! jq -e . "$s" >/dev/null 2>&1; then fail "files: $s is not valid JSON"; return; fi
-  jq -e '[.hooks.Stop[]?.hooks[]?.command] | any(test("/\\.claude/hooks/stop\\.sh"))' "$s" >/dev/null 2>&1 \
-    || fail "files: $s does not wire .claude/hooks/stop.sh to Stop"
-  jq -e '[.hooks.SessionStart[]?.hooks[]?.command] | any(test("/\\.claude/hooks/session-start\\.sh"))' "$s" >/dev/null 2>&1 \
-    || fail "files: $s does not wire .claude/hooks/session-start.sh to SessionStart"
+  # Exact command strings: a no-op that merely mentions the path must not pass.
+  local want_stop='"${CLAUDE_PROJECT_DIR}"/.claude/hooks/stop.sh'
+  local want_ss='"${CLAUDE_PROJECT_DIR}"/.claude/hooks/session-start.sh'
+  jq -e --arg w "$want_stop" '[.hooks.Stop[]? | select((.matcher // "") == "" or .matcher == "*") | .hooks[]? | select(.type == "command" and .command == $w and ((.timeout // 600) >= 30))] | length > 0' "$s" >/dev/null 2>&1 \
+    || fail "files: $s does not wire exactly $want_stop to Stop (no matcher, timeout >= 30)"
+  jq -e --arg w "$want_ss" '[.hooks.SessionStart[]? | select((.matcher // "") | split("|") | (index("startup") != null and index("resume") != null and index("compact") != null)) | .hooks[]? | select(.type == "command" and .command == $w)] | length > 0' "$s" >/dev/null 2>&1 \
+    || fail "files: $s does not wire exactly $want_ss to SessionStart (matcher startup|resume|compact)"
+  # disableAllHooks in any project settings file switches every hook off.
+  local sf
+  for sf in .claude/settings*.json; do
+    [ -f "$sf" ] || continue
+    grep -q 'disableAllHooks' "$sf" && fail "files: $sf contains disableAllHooks"
+  done
   local cmd path
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue
@@ -110,17 +143,27 @@ check_files() {
 
 check_git() {
   git rev-parse --git-dir >/dev/null 2>&1 || { fail "git: not a git repository"; return; }
-  local st; st=$(git status --porcelain --untracked-files=all 2>/dev/null)
+  # Modified/staged tracked files.
+  local st; st=$(git status --porcelain --untracked-files=no 2>/dev/null)
   if [ -n "$st" ]; then
-    local mod unt
-    mod=$(printf '%s\n' "$st" | grep -vc '^??')
-    unt=$(printf '%s\n' "$st" | grep -c '^??')
-    [ "$mod" -eq 0 ] || fail "git: $mod uncommitted change(s): $(printf '%s\n' "$st" | grep -v '^??' | head -5 | cut -c4- | tr '\n' ' ')"
-    [ "$unt" -eq 0 ] || fail "git: $unt untracked file(s): $(printf '%s\n' "$st" | grep '^??' | head -5 | cut -c4- | tr '\n' ' ')"
+    fail "git: $(printf '%s\n' "$st" | wc -l | tr -d ' ') uncommitted change(s): $(printf '%s\n' "$st" | head -5 | cut -c4- | tr '\n' ' ')"
   fi
+  # Untracked files: only the committed .gitignore may hide them, not .git/info/exclude
+  # or a global excludesFile. Claude Code puts settings.local.json in global excludes;
+  # it is personal, so it is allowed (its disableAllHooks is checked in "files").
+  local unt; unt=$(git ls-files --others --exclude-per-directory=.gitignore 2>/dev/null | grep -vx '.claude/settings.local.json')
+  if [ -n "$unt" ]; then
+    fail "git: $(printf '%s\n' "$unt" | wc -l | tr -d ' ') untracked file(s): $(printf '%s\n' "$unt" | head -5 | tr '\n' ' ')"
+  fi
+  # Index flags that make git status blind to edits.
+  local hidden; hidden=$(git ls-files -v 2>/dev/null | grep -E '^([a-z]|S) ' | cut -c3- | head -5)
+  [ -z "$hidden" ] || fail "git: assume-unchanged/skip-worktree flags hide edits: $(printf '%s\n' "$hidden" | tr '\n' ' ')"
   local br; br=$(git branch --show-current)
   if [ -z "$br" ]; then fail "git: detached HEAD (no branch to push)"; return; fi
-  if git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
+  local up_remote; up_remote=$(git config --get "branch.$br.remote" 2>/dev/null)
+  if [ -n "$up_remote" ] && [ "$up_remote" != "origin" ]; then
+    fail "git: upstream of $br is on remote '$up_remote', not origin"
+  elif git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
     local ahead; ahead=$(git rev-list --count '@{u}..HEAD' 2>/dev/null || echo "?")
     [ "$ahead" = "0" ] || fail "git: $ahead unpushed commit(s) on $br vs $(git rev-parse --abbrev-ref '@{u}')"
   else

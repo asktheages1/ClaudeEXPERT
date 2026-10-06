@@ -78,7 +78,41 @@ expect "hook committed without +x" files ".claude/hooks/session-start.sh has git
 
 # 6c. Hook wired to a wrong path.
 fresh; sed -i 's#hooks/stop.sh#hooks/stopp.sh#' .claude/settings.json
-expect "Stop hook wired to wrong path" files "does not wire .claude/hooks/stop.sh"
+expect "Stop hook wired to wrong path" files "does not wire exactly.*stop.sh to Stop"
+
+# 4c-4j. Log parser holes found by review/adversary (2026-10-06).
+fresh; printf '\n### 2026-10-07 — h3 entry\n- trust me\n' >> exceptions.md
+expect "### header counts as bad header" files "exceptions.md:[0-9]+ bad header"
+fresh; printf '\n##2026-10-07 — no space\n- trust me\n' >> findings.md
+expect "##2026 header without space" files "findings.md:[0-9]+ bad header"
+fresh; printf '\n## 2026-10-07 — open fence\n- x [MEASURED: a → b]\n```bash\n## Oct 7 hidden\n- untagged\n' >> findings.md
+expect "unclosed fence" files "findings.md has an unclosed code fence"
+fresh; printf '\n## 2026-10-07 — tilde\n~~~\n[MEASURED: fake]\n~~~\n' >> findings.md
+expect "tag only inside ~~~ fence" files "findings.md:[0-9]+ entry has no evidence tag"
+fresh; printf '\n## 2026-10-07 — comment\n- claim <!-- [CL] -->\n' >> findings.md
+expect "tag only inside HTML comment" files "findings.md:[0-9]+ entry has no evidence tag"
+fresh; printf '\n## 2026-10-07 — code\n- claim `[MEASURED]`\n' >> findings.md
+expect "tag only inside inline code" files "findings.md:[0-9]+ entry has no evidence tag"
+fresh; printf '\n## 2026-10-07 — malformed\n- claim [CL ] docs\n' >> findings.md
+expect "malformed tag [CL ]" files "findings.md:[0-9]+ entry has no evidence tag"
+fresh; printf '\n## 2099-01-01 — future\n- claim [MEASURED: a]\n' >> findings.md
+expect "future date" files "findings.md:[0-9]+ future date"
+
+# 6d-6g. Hook wiring holes.
+fresh; jq '. + {disableAllHooks: true}' .claude/settings.json > s.tmp && mv s.tmp .claude/settings.json
+expect "disableAllHooks in settings.json" files "settings.json contains disableAllHooks"
+fresh; echo '{"disableAllHooks": true}' > .claude/settings.local.json
+expect "disableAllHooks in settings.local.json" files "settings.local.json contains disableAllHooks"
+fresh; jq '.hooks.Stop[0].hooks[0].command = "true /.claude/hooks/stop.sh"' .claude/settings.json > s.tmp && mv s.tmp .claude/settings.json
+expect "Stop command is a no-op mentioning the path" files "does not wire exactly.*stop.sh to Stop"
+fresh; jq '.hooks.SessionStart[0].matcher = "nomatch"' .claude/settings.json > s.tmp && mv s.tmp .claude/settings.json
+expect "SessionStart matcher that never fires" files "does not wire exactly.*session-start.sh"
+
+# 6h-6i. Knowledge files at any depth; non-regular file.
+fresh; mkdir -p knowledge/sub; head -c 40001 /dev/zero | tr '\0' 'z' > knowledge/sub/big.md
+expect "oversized knowledge file in subdirectory" files "knowledge/sub/big.md is 40001 bytes"
+fresh; mkfifo knowledge/zz.md
+expect "FIFO in knowledge does not hang" files "knowledge/zz.md is not a regular file"
 
 # 7. Uncommitted change to a tracked file.
 fresh; echo "x" >> findings.md
@@ -100,6 +134,16 @@ expect "missing upstream" git "has no upstream"
 fresh; git_q checkout -b fresh-session; out=$(scripts/check.sh git 2>&1); rc=$?
 [ "$rc" -eq 0 ] && ok "no upstream, no local commits = green" || bad "no upstream, no local commits (rc=$rc)" "$out"
 
+# 9c-9f. Git state hidden from git status.
+fresh; echo x > hidden.txt; echo hidden.txt >> .git/info/exclude
+expect "untracked file hidden by .git/info/exclude" git "untracked file.*hidden.txt"
+fresh; echo x >> findings.md; git update-index --assume-unchanged findings.md
+expect "assume-unchanged flag" git "assume-unchanged/skip-worktree flags hide edits: findings.md"
+fresh; f=$(ls knowledge/*.md | head -1); echo x >> "$f"; git update-index --skip-worktree "$f"
+expect "skip-worktree flag" git "assume-unchanged/skip-worktree flags hide edits: $f"
+fresh; git_q checkout -b selftrack; echo x > n.txt; git_q add n.txt; git_q commit -m n; git config branch.selftrack.remote .; git config branch.selftrack.merge refs/heads/selftrack
+expect "upstream pointing at a local branch" git "upstream of selftrack is on remote '\.'"
+
 # --- Stop hook (stdin JSON, counter per session_id) ---
 hook() { printf '{"session_id":"%s","stop_hook_active":%s,"hook_event_name":"Stop"}' "$1" "$2" | .claude/hooks/stop.sh; }
 sid="test-$$-$RANDOM"
@@ -114,9 +158,13 @@ o5=$(hook "$sid" false)
 printf '%s' "$o5" | grep -q '1/3' && ok "stop: new turn (stop_hook_active=false) restarts the count" || bad "stop: reset" "$o5"
 rm -f stray.txt; o6=$(hook "$sid" true); rc=$?
 [ "$rc" -eq 0 ] && [ -z "$o6" ] && ok "stop: green lets the turn end (no output, exit 0)" || bad "stop: green (rc=$rc)" "$o6"
+printf '\n## 2026-10-07 — \033[1mx\001\n- untagged\n' >> findings.md; o8=$(hook "$sid-c" false)
+printf '%s' "$o8" | python3 -c 'import json,sys; json.load(sys.stdin)' 2>/dev/null && printf '%s' "$o8" | grep -q '"decision":"block"' \
+  && ok "stop: control chars in FAIL lines still give valid JSON" || bad "stop: control chars" "$o8"
+git checkout -q -- findings.md
 chmod -x scripts/check.sh; o7=$(hook "$sid-b" false)
 printf '%s' "$o7" | grep -q '"decision":"block".*check.sh missing or not executable' && ok "stop: missing check.sh blocks" || bad "stop: missing check.sh" "$o7"
-rm -f "${HOME:-/tmp}/.cache/claudeexpert-stop-hook/$sid".count "${HOME:-/tmp}/.cache/claudeexpert-stop-hook/$sid-b".count
+rm -f "${HOME:-/tmp}/.cache/claudeexpert-stop-hook/$sid"*.count
 
 echo "test-check.sh: $pass passed, $failed failed"
 [ "$failed" -eq 0 ]
