@@ -1,18 +1,15 @@
 #!/bin/bash
-# Stop hook: the turn may not end while scripts/check.sh fails (oversized files, malformed entries,
-# uncommitted or unpushed work). Blocks up to 3 times in a row for the same failure, then gives up
-# with a visible message, so an unfixable failure (e.g. network down) cannot trap the session.
+# Stop hook. Local failures (budgets, format, uncommitted, stash, ignored files) block on every stop:
+# they are always fixable, and Claude Code's own cap (8 continuations without a tool call) is the exit.
+# Push failures may be the network: they block 3 times in a row, then let the turn end.
+# No jq needed to block: exit 2 + stderr (O2 A6).
 input=$(cat)
-cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
-sid=$(jq -r '.session_id // "nosession"' <<<"$input" 2>/dev/null)
-counter="${TMPDIR:-/tmp}/claude-stop-hook-count-$sid"   # outside the repo: an untracked file here would fail check_git itself
-out=$(scripts/check.sh all 2>&1); rc=$?
-if [ $rc -eq 0 ]; then rm -f "$counter"; exit 0; fi
-n=$(cat "$counter" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" >"$counter"
-if [ "$n" -gt 3 ]; then
-  rm -f "$counter"
-  jq -n --arg m "Stop hook gave up after 3 blocks; the repository is still failing checks:"$'\n'"$out" '{systemMessage:$m}'
-  exit 0
+cd "${CLAUDE_PROJECT_DIR:-.}" || exit 2
+out=$(scripts/check.sh all 2>&1) && { rm -f "${TMPDIR:-/tmp}/kb-stop-push-count-$(basename "$PWD")"; exit 0; }
+if printf '%s\n' "$out" | grep -v -e '^OK' -e 'not pushed' -e 'on no remote branch' -e '^[0-9a-f]\{7,\} ' | grep -q .; then
+  printf 'Stop hook: scripts/check.sh failed. Fix it, commit and push; drafts go to the scratchpad.\n%s\n' "$out" >&2
+  exit 2
 fi
-jq -n --arg r "Stop hook (block $n/3): scripts/check.sh failed. Fix the cause, commit and push before ending the turn; drafts belong in the scratchpad, not the repo. If it cannot be fixed, say so to the owner."$'\n'"$out" '{decision:"block", reason:$r}'
-exit 0
+c="${TMPDIR:-/tmp}/kb-stop-push-count-$(basename "$PWD")"; n=$(( $(cat "$c" 2>/dev/null || echo 0) + 1 )); echo "$n" >"$c"
+if [ "$n" -le 3 ]; then printf 'Stop hook (push %s/3): commits not pushed. Push, or tell the owner why it fails.\n%s\n' "$n" "$out" >&2; exit 2; fi
+rm -f "$c"; echo "{\"systemMessage\":\"Stop hook: turn ended with UNPUSHED commits (push failed 3 times).\"}"; exit 0

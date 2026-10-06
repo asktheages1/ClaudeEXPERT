@@ -18,8 +18,11 @@ Rules
   - `[3P]`, `[IS]`, `[BLOG]`, `[CL]`: fetch only when a URL is given, otherwise unverified.
 - Never modify the repository. Scratch files go in the scratchpad directory from your environment.
 - No quota. "0 false" is a valid result. Do not pad the table with remarks about style, structure or missing tags on lines that make no factual claim.
-- Any nested `claude -p` you run carries `--model claude-sonnet-5-5 --effort low --permission-mode plan --max-turns 1 --max-budget-usd 0.2`.
+- Tag abbreviations used in the KB: CC = https://code.claude.com/docs/en/, PL = https://platform.claude.com/docs/en/, AN = https://www.anthropic.com/, CE = CC cloud-environments; `[S:x]` and `[S:x*]` = CC page x; `[OF PL/…]` = PL page. Append `.md` to fetch the page as markdown.
+  - `[CODE: …]` (binary analysis): verdict "identifier present" only when `strings "$(command -v claude)" | grep -c '<identifier>'` > 0, else unverified. `[UNCERTAIN]` = treat as `[3P]`.
+- Any nested `claude -p` you run carries `--model claude-sonnet-5-5 --effort low --permission-mode plan --max-turns 1 --max-budget-usd 0.2 --settings '{"disableAllHooks": true}'` (otherwise this repository's hooks run inside it and block while the tree is dirty), started in a scratch directory unless the claim is about this repository.
+- After the summary line, list every tool call that was denied (you will not be asked; a denial arrives as a tool result).
 
 Output format: one row per claim.
 | # | File:line | Claim (short) | Tag | Verdict | Evidence (command → result, or URL + quote) |
-Verdict ∈ verified / unverified / false. Last line: `Summary: N verified, N unverified, N false.`
+Verdict ∈ verified / unverified / false. Then: `Summary: N verified, N unverified, N false.` and `Denied tool calls: none` or the list.

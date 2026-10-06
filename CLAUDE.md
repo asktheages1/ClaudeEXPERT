@@ -10,6 +10,7 @@ Do not create or modify anything outside this repository and do not touch other 
 
 ## Language
 - Owner: Polish (replies, questions, summaries, cost estimates). Repository: English (KB, commits, scripts, comments, `findings.md`, `exceptions.md`, `open-items.md`).
+- Drafts of the owner's own Claude files for other systems (CLAUDE.md, agents, hooks, settings): English, like everything the owner keeps.
 - Keep identifiers, flags, field names and quotes from docs verbatim.
 
 ## Communication
@@ -20,7 +21,7 @@ Do not create or modify anything outside this repository and do not touch other 
 - "Nothing found" is a valid result of any check or review. Never invent findings to fill a list.
 
 ## What counts as proof
-- Proof is a command plus its output that anyone can re-run: `[MEASURED: command → result, date, CC version, model, n]`. Prose, a tag written from memory, an agent's report and your own "I verified" are claims, not proof. A single run is an anecdote: always state n.
+- Proof is a command plus its output that anyone can re-run: ``[MEASURED: `command` → result, date, CC version, model, n]``. Prose, a tag written from memory, an agent's report and your own "I verified" are claims, not proof; an agent's result is tagged `[3P: agent <name>, date]` until you re-run it yourself. A single run is an anecdote: always state n. `scripts/check.sh` rejects a `[MEASURED]` without a backticked command and `→`, or one that cites an agent.
 - Model, effort and hook or classifier events come from transcript fields, hook input or `$CLAUDE_EFFORT`, never from self-report (O0 §5).
 
 ## Session start
@@ -55,7 +56,7 @@ Snapshot: 2026-10-06 · Claude Code 2.1.289–2.1.291 · research model Opus 5.5
 | Third party | `[3P]`, `[UNCERTAIN]` |
 | Inference or calculation | `[ASSUMPTION]` |
 
-- New entries use `[MEASURED]`, `[SOURCE: URL, date]`, `[CL]`, `[3P]`, `[ASSUMPTION]`.
+- New entries use `[MEASURED: `command` → result, …]`, `[SOURCE: https://…, date]`, `[CL]`, `[3P]`, `[ASSUMPTION]`; the other notations are legacy, kept in the KB files.
 - When sources disagree: `[MEASURED]`/`[CODE]` for the current version > `[OF]`/`[CL]` > `[BLOG]` > `[IS]` > `[3P]` > `[ASSUMPTION]`; within one level the newer date wins. Docs vs measurement: report both; the measurement decides for this environment and version.
 
 ## Freshness and live lookups
@@ -64,20 +65,20 @@ Snapshot: 2026-10-06 · Claude Code 2.1.289–2.1.291 · research model Opus 5.5
 
 ## Experiments ("does it work?")
 - Scratch directory outside the repo, never in `knowledge/`.
-- Every nested `claude -p` gets explicit `--model`, `--effort`, `--permission-mode`, `--max-turns`, `--max-budget-usd` (without `--model` it ran on Sonnet 5.5 medium, O0 §5). Start it at a repo root on purpose: project deny rules and hooks load only from the start directory (O0 §4).
+- Every nested `claude -p` gets explicit `--model`, `--effort`, `--permission-mode`, `--max-turns`, `--max-budget-usd` (without `--model` it ran on Sonnet 5.5 medium, O0 §5) and `--settings '{"disableAllHooks": true}'` unless the experiment tests hooks: started at this repo's root it runs this repo's hooks and the Stop hook blocks it while the tree is dirty. Choose the start directory on purpose: project deny rules and hooks load only from there (O0 §4).
 - Cost gate: a single `claude -p` ≤ ~1 USD, no workflows or teams: run without asking. Anything bigger: cost and time estimate, then the owner's approval.
 - Never change account or environment settings, Routines or other repositories as part of an experiment.
 
 ## Agents
-- One reviewer, not many. `kb-reviewer` (`.claude/agents/kb-reviewer.md`: Opus 5.5, high, read-only) re-checks the evidence tags in a diff and returns a table. Run it on every KB change and on any claim the owner wants verified. Its table is itself a claim: spot-check one row yourself.
-- Agents see neither this conversation nor the owner's preferences (O0 §2), so the prompt carries the goal, paths, criteria, output format and "nothing found allowed". Name model and effort explicitly. The cloud caps agent depth at 1.
+- One reviewer, not many. `kb-reviewer` (`.claude/agents/kb-reviewer.md`: Opus 5.5, high, instructed not to write; stray edits are caught by the Stop hook's git check) re-checks the evidence tags in a diff and returns a table. Run it on every KB change and on any claim the owner wants verified. Its table is itself a claim: spot-check one row yourself. An agent definition added mid-session needs a restart to appear (O0 §8); until then use `general-purpose` with `model: opus` and the definition's body in the prompt.
+- Agents see neither this conversation nor the owner's preferences (O0 §2), so the prompt carries the goal, paths, criteria, output format and "nothing found allowed". Name the model explicitly; effort only through agent frontmatter or workflow `opts.effort` (the Agent tool has no effort field, O0 §3). The cloud caps agent depth at 1.
 - Default agents to `opus`; use Fable only with a stated reason (2.5× the price, O0 §5).
 
 ## Task protocol (anything that changes the repository)
 1. Spec in one paragraph before editing: what changes, how it will be verified, what "done" means.
-2. Do it within the budgets: knowledge file ≤ 40 KB and ≤ 22,500 Read-counter tokens (measure with the Read counter, O0 §1, not chars/4); this file ≤ 200 lines; `open-items.md` ≤ 8 KB.
+2. Do it within the budgets: every file ≤ 40 KB (knowledge files also ≤ 22,500 Read-counter tokens, measured with the Read counter, O0 §1, not chars/4); this file ≤ 200 lines; `open-items.md` ≤ 8 KB. When `findings.md` or `exceptions.md` nears 32 KB, move the oldest entries to `archive/<file>-<year>.md` (same budget) and leave a one-line pointer.
 3. Verify: `scripts/check.sh` green; for KB changes also a `kb-reviewer` table with no "false" row.
-4. Commit (English message naming what was verified and the source) and push to the session branch. The Stop hook blocks ending a turn with failing checks or uncommitted or unpushed work. If a failure cannot be fixed, tell the owner instead of fighting the hook.
+4. Commit (English message naming what was verified and the source) and push to the session branch. The Stop hook blocks ending a turn while any local check fails (budgets, entry format, uncommitted, stashed or ignored files, commits on no remote branch); only a push that keeps failing lets the turn end after three attempts, and then you say so to the owner. GitHub MCP tools that write to the remote are denied in `.claude/settings.json`: everything goes through git.
 
 ## Files and approvals
 - `findings.md`: important findings and interactions. `exceptions.md`: confirmed exceptions to documented behavior or KB facts, with evidence; not exceptions to the owner's instructions. `open-items.md`: decisions waiting for the owner, open KB conflicts, unverified facts. Entries need no approval: add, commit, push. `scripts/check.sh` enforces the format: dated `## YYYY-MM-DD — title` header and an evidence tag per entry.

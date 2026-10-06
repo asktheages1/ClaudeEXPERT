@@ -1,16 +1,25 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "mcp__github__push_files",
+      "mcp__github__create_or_update_file",
+      "mcp__github__delete_file",
+      "mcp__github__merge_pull_request",
+      "mcp__github__enable_pr_auto_merge"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {"matcher": "startup|resume|compact",
-       "hooks": [{"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.sh", "timeout": 60}]}
+       "hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.sh\"", "timeout": 60}]}
     ],
     "PostToolUse": [
       {"matcher": "Bash|Edit|Write",
-       "hooks": [{"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/post-tool.sh", "timeout": 20}]}
+       "hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/post-tool.sh\"", "timeout": 20}]}
     ],
     "Stop": [
-      {"hooks": [{"type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/stop.sh", "timeout": 60}]}
+      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop.sh\"", "timeout": 60}]}
     ]
   }
 }
