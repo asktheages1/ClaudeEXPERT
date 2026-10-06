@@ -3,6 +3,14 @@
 Important findings, crucial information and notable interactions from sessions. Newest first.
 Format: `## YYYY-MM-DD — title`, then the fact with its evidence tag (see CLAUDE.md "Evidence tags"). Promote confirmed, general facts to `knowledge/` (with the owner's approval) and note it here.
 
+## 2026-10-06 — A 2 MB CLAUDE.md is loaded in full: 62% of a 1M window before any work
+- Synthetic English CLAUDE.md of 2,000,041 B in an otherwise empty git dir → `/context` reports "Memory files 619.8k" of "644.1k / 1m (64%)"; control file of 30,099 B → 9.2k tokens. No truncation, no refusal, no warning in the JSON result [MEASURED: `claude -p "/context" --output-format json --model claude-sonnet-5-5 --effort low --permission-mode plan --max-turns 1`, 2026-10-06, CC 2.1.292, n=1 per size, 0 USD].
+- Consequences: the owner's reported CLAUDE.md of >2 MB in another project left roughly a third of the window for work and would not fit a 200K model at all; the ~200-line adherence limit (O0 §2 T2a-14) was exceeded ~1000×. Candidate for O0 §2 (needs the owner's approval).
+
+## 2026-10-06 — Owner's report on why his multi-session projects degraded (context for future sessions)
+- Reported by the owner, not measured [3P: owner report, 2026-10-06]: instruction and knowledge files grew without limit or archiving (CLAUDE.md >2 MB); up to 8 "sources of truth" with contradictions; one project hand-coded 800+ animations instead of an engine; audits by other sessions and agents always found more errors and never converged; a "proof required" rule was satisfied by the model writing its own proof text; a self-invented "auto-wake" never fired; timezone errors despite being told the time.
+- Diagnosis given in the session (see the session reply): every safeguard was text or an LLM judgment with the same blind spot; no hard constraint (hook exit 2, deny rule, test, size budget, branch protection) existed; audits checked execution against the code's own intent, not against the system's goal; "proof" was never defined as a re-runnable command. Consistent with O0 §6 and §8.
+
 ## 2026-10-06 — Auto mode classifier blocks Claude from changing its own instructions, even on the owner's request
 - After the owner told Claude to merge to `main` itself, two actions were denied with reason `[Self-Modification]`: editing CLAUDE.md to record a standing approval to merge, and then fast-forwarding `main` with a branch that changes CLAUDE.md [MEASURED: 2 auto mode classifier denials, 2026-10-06, CC 2.1.291, Opus 5.5, n=2]. Consistent with O0 §4 (protected paths always go to the classifier). Ordinary edits to CLAUDE.md requested by the owner were allowed in the same session (n=3).
 - Consequence: the owner merges changes into `main` on GitHub. Whether merges touching only `knowledge/` pass the classifier is unverified.
