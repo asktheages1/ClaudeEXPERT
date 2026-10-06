@@ -1,0 +1,11 @@
+# Server-side run of the repository checks. Unlike hooks and deny rules, a session cannot switch this off:
+# the result shows as a status on every push and pull request (O0 §8: only server-side gates bind an
+# adversarial session). Git-state checks are skipped here (CI has no upstream); file checks run in full.
+name: check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/check.sh files
