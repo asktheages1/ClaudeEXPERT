@@ -3,6 +3,11 @@
 Important findings, crucial information and notable interactions from sessions. Newest first.
 Format: `## YYYY-MM-DD — title`, then the fact with its evidence tag (see CLAUDE.md "Evidence tags"). Promote confirmed, general facts to `knowledge/` (with the owner's approval) and note it here.
 
+## 2026-10-06 — Project hooks fire in an interactive cloud session without restart; exit 2 blocks; classifier allowed creating `.claude/`
+- A `PreToolUse` hook added to `.claude/settings.json` mid-session fired on the next Bash call (log line written), and its `exit 2` blocked a Bash call with the message shown as `PreToolUse:Bash hook error` [MEASURED: probe hook writing to a log, then a command containing the block marker → blocked, 2026-10-06, CC 2.1.292, Fable 5.1, auto mode, n=1 each]. Consistent with O0 §3 T3-51 (hooks live in session) and O0 §4 (exit 2 blocks).
+- Creating `.claude/settings.json`, `.claude/hooks/*` and `.claude/agents/*` on the owner's explicit request passed the auto mode classifier (n=1 session); contrast with the `[Self-Modification]` denials below.
+- `$CLAUDE_EFFORT` read from Bash changed from `xhigh` to `high` within the same session (22:37Z vs 23:01Z); cause unknown (no `/effort` by Claude) [MEASURED: echo in Bash, 2026-10-06, CC 2.1.292, n=2]. Treat the variable as a readout at that moment, not a session constant.
+
 ## 2026-10-06 — A 2 MB CLAUDE.md is loaded in full: 62% of a 1M window before any work
 - Synthetic English CLAUDE.md of 2,000,041 B in an otherwise empty git dir → `/context` reports "Memory files 619.8k" of "644.1k / 1m (64%)"; control file of 30,099 B → 9.2k tokens. No truncation, no refusal, no warning in the JSON result [MEASURED: `claude -p "/context" --output-format json --model claude-sonnet-5-5 --effort low --permission-mode plan --max-turns 1`, 2026-10-06, CC 2.1.292, n=1 per size, 0 USD].
 - Consequences: the owner's reported CLAUDE.md of >2 MB in another project left roughly a third of the window for work and would not fit a 200K model at all; the ~200-line adherence limit (O0 §2 T2a-14) was exceeded ~1000×. Candidate for O0 §2 (needs the owner's approval).
