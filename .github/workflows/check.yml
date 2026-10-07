@@ -1,6 +1,9 @@
-# Server-side run of the repository checks. Unlike hooks and deny rules, a session cannot switch this off:
-# the result shows as a status on every push and pull request (O0 §8: only server-side gates bind an
-# adversarial session). Git-state checks are skipped here (CI has no upstream); file checks run in full.
+# Server-side run of the repository checks. A session cannot switch this off from inside its container,
+# but it CAN edit scripts/check.sh and this file on its branch. Mitigations: job "check" runs the copy of
+# check.sh from origin/main, not the branch's; job "guard" turns red whenever a branch changes any
+# enforcement file (this workflow, settings.json, hooks, check.sh), so the owner reads that diff before
+# merging. Residual hole: this workflow file itself, edited on the branch, runs as edited. The owner's
+# eyes on .github/ and .claude/ in the merge diff are the last gate (O0 §8).
 name: check
 on: [push, pull_request]
 jobs:
@@ -8,4 +11,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: bash scripts/check.sh files
+        with: {fetch-depth: 0}
+      - name: Run scripts/check.sh files from origin/main (falls back to the branch copy on main itself)
+        run: |
+          git fetch origin main
+          git show origin/main:scripts/check.sh > /tmp/check-main.sh 2>/dev/null || cp scripts/check.sh /tmp/check-main.sh
+          bash /tmp/check-main.sh files
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Fail if enforcement files differ from origin/main (red = read this diff before merging)
+        run: |
+          git fetch origin main
+          git show origin/main:scripts/check.sh > /tmp/check-main.sh 2>/dev/null || cp scripts/check.sh /tmp/check-main.sh
+          bash /tmp/check-main.sh guard

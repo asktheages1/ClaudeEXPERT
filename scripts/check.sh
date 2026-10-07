@@ -1,11 +1,12 @@
 #!/bin/bash
 # Deterministic checks for this repository. Exit 0 = green, 1 = at least one FAIL line.
-# Usage: scripts/check.sh [files|git|all]   (default: all)
+# Usage: scripts/check.sh [files|git|all|guard]   (default: all; guard is for CI only)
 # Budgets: every file fits one Read call (≤ 40 KB, O0 §1); CLAUDE.md ≤ 200 lines (O0 §2);
 # open-items.md ≤ 8 KB (hook stdout cap, compaction survival). Entries dated after 2026-10-06 need
 # re-runnable proof: [MEASURED: `command` → result …] or [SOURCE: https://…]; agent output is never MEASURED.
 set -u
-cd "$(dirname "$0")/.." || exit 1
+root=$(git rev-parse --show-toplevel 2>/dev/null) || root="$(dirname "$0")/.."   # works also when CI runs a copy of this script
+cd "$root" || exit 1
 mode="${1:-all}"; fail=0
 err() { printf 'FAIL: %s\n' "$*"; fail=1; }
 
@@ -51,9 +52,18 @@ check_git() {
   [ $fail -eq 0 ] && echo "OK: git"
 }
 
+check_guard() {
+  # Enforcement files must match origin/main; a difference is not an error on a branch, it is a signal
+  # for the owner to read that diff before merging. Used by CI only, never by the Stop hook.
+  git rev-parse --verify -q origin/main >/dev/null || { echo "OK: guard (no origin/main)"; return; }
+  d=$(git diff --stat origin/main -- .github/workflows .claude/settings.json .claude/hooks scripts/check.sh | tail -1)
+  [ -z "$d" ] || err "enforcement files differ from origin/main (review before merging): $d"
+  [ $fail -eq 0 ] && echo "OK: guard"
+}
+
 case "$mode" in
-  files) check_files ;; git) check_git ;;
+  files) check_files ;; git) check_git ;; guard) check_guard ;;
   all) check_files; f1=$fail; fail=0; check_git; fail=$((f1 || fail)) ;;
-  *) echo "usage: $0 [files|git|all]" >&2; exit 2 ;;
+  *) echo "usage: $0 [files|git|all|guard]" >&2; exit 2 ;;
 esac
 exit $fail
