@@ -25,11 +25,15 @@ check_files() {
   [ -z "$x" ] || err "auto-loaded instruction files besides CLAUDE.md: $x"
   # 3. Entry format; a [MEASURED: …] tag must carry a backticked command and → result, and must not cite an agent.
   for f in findings.md exceptions.md; do
-    out=$(awk -v f="$f" '
+    # Strict rules apply to every entry that is not already on origin/main (so a backdated header buys
+    # nothing) and, as a floor, to every entry dated after 2026-10-06. Without origin/main: date only.
+    base=$(git show origin/main:"$f" 2>/dev/null | grep '^## ' || true)
+    out=$(awk -v f="$f" -v base="$base" '
+      BEGIN { n = split(base, b, "\n"); for (i = 1; i <= n; i++) inmain[b[i]] = 1 }
       function flush() { if (hdr != "" && !tag) printf "FAIL: %s: entry without evidence tag: %s\n", f, hdr }
       /^## / { flush(); hdr=$0; tag=0
                if ($0 !~ /^## 20[0-9][0-9]-[01][0-9]-[0-3][0-9] — /) printf "FAIL: %s: header must be \"## YYYY-MM-DD — title\": %s\n", f, $0
-               strict = (substr($0,4,10) > "2026-10-06"); next }   # entries up to 2026-10-06 grandfathered
+               strict = (substr($0,4,10) > "2026-10-06") || !($0 in inmain); next }
       hdr == "" { next }
       /\[MEASURED[^]]*(agent|reviewer)/ { printf "FAIL: %s: agent output tagged MEASURED (it is a claim): %s\n", f, hdr }
       strict && (/\[MEASURED: [^]]*`[^`]+`[^]]*→/ || /\[SOURCE: https?:\/\// || /\[(3P|CL|ASSUMPTION)[]:]/) { tag=1 }
@@ -57,7 +61,7 @@ check_guard() {
   # Enforcement files must match origin/main; a difference is not an error on a branch, it is a signal
   # for the owner to read that diff before merging. Used by CI only, never by the Stop hook.
   git rev-parse --verify -q origin/main >/dev/null || { echo "OK: guard (no origin/main)"; return; }
-  d=$(git diff --stat origin/main -- .github/workflows .claude/settings.json .claude/hooks scripts/check.sh | tail -1)
+  d=$(git diff --stat origin/main -- .github .claude CLAUDE.md scripts | tail -1)
   [ -z "$d" ] || err "enforcement files differ from origin/main (review before merging): $d"
   [ $fail -eq 0 ] && echo "OK: guard"
 }
