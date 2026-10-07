@@ -34,8 +34,9 @@ check_files() {
       /\[MEASURED[^]]*(agent|reviewer)/ { printf "FAIL: %s: agent output tagged MEASURED (it is a claim): %s\n", f, hdr }
       strict && (/\[MEASURED: [^]]*`[^`]+`[^]]*→/ || /\[SOURCE: https?:\/\// || /\[(3P|CL|ASSUMPTION)[]:]/) { tag=1 }
       !strict && /\[(MEASURED|SOURCE|CODE|CL|3P|ASSUMPTION|OF|IS|BLOG|S:)/ { tag=1 }
-      END { flush() }' "$f")
-    [ -z "$out" ] || { printf '%s\n' "$out"; fail=1; }
+      END { flush() }' "$f" 2>&1); rc=$?
+    [ $rc -eq 0 ] || err "$f: entry check itself failed (awk exit $rc): a broken or mangled check.sh must never pass"$'\n'"$out"
+    [ $rc -ne 0 ] || [ -z "$out" ] || { printf '%s\n' "$out"; fail=1; }
   done
   [ $fail -eq 0 ] && echo "OK: files"
 }

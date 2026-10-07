@@ -1,29 +1,39 @@
-# Server-side run of the repository checks. A session cannot switch this off from inside its container,
-# but it CAN edit scripts/check.sh and this file on its branch. Mitigations: job "check" runs the copy of
-# check.sh from origin/main, not the branch's; job "guard" turns red whenever a branch changes any
-# enforcement file (this workflow, settings.json, hooks, check.sh), so the owner reads that diff before
-# merging. Residual hole: this workflow file itself, edited on the branch, runs as edited. The owner's
-# eyes on .github/ and .claude/ in the merge diff are the last gate (O0 §8).
+# Server-side run of the repository checks. A session cannot switch this off from inside its container.
+# Two triggers, two trust levels:
+# - push: fast feedback, but the workflow file and check.sh come from the pushed branch, so a branch can
+#   tamper with both. Mitigated by running the check.sh copy from origin/main and by the "guard" job.
+# - pull_request_target: the workflow definition comes from the BASE branch (main) and cannot be edited by
+#   the PR; the job checks out the PR head explicitly and runs main's check.sh on it. This is the status
+#   to trust before merging. (Safe here: the job runs no code from the PR, only main's check.sh over it.)
+# Residual: on a plain push the branch's own workflow runs; only the PR status is tamper-proof, and the
+# owner's eyes on the diff of .github/ and .claude/ remain the last gate (O0 §8).
 name: check
-on: [push, pull_request]
+on:
+  push:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
-      - name: Run scripts/check.sh files from origin/main (falls back to the branch copy on main itself)
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Run main's scripts/check.sh files on this code
         run: |
           git fetch origin main
-          git show origin/main:scripts/check.sh > /tmp/check-main.sh 2>/dev/null || cp scripts/check.sh /tmp/check-main.sh
+          git show origin/main:scripts/check.sh > /tmp/check-main.sh
           bash /tmp/check-main.sh files
   guard:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Fail if enforcement files differ from origin/main (red = read this diff before merging)
         run: |
           git fetch origin main
-          git show origin/main:scripts/check.sh > /tmp/check-main.sh 2>/dev/null || cp scripts/check.sh /tmp/check-main.sh
+          git show origin/main:scripts/check.sh > /tmp/check-main.sh
           bash /tmp/check-main.sh guard
