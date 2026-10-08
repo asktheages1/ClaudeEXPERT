@@ -1,6 +1,6 @@
 # Plan migracji systemu dokumentacji Foldery
 
-Wersja: **4** (po dwóch rundach recenzji „meta” (M1–M15, N1–N8, Załącznik R) i po niezależnej recenzji technicznej (T1–T13, Załącznik T)) · 2026-10-08 · podstawa: `reports/foldery-analysis.md` (dalej „Raport”), Foldery `main` @ `be31a48`.
+Wersja: **4.1** (poprawki S4/S5 z recenzji zasad ogólnych; wcześniej: po dwóch rundach recenzji „meta” (M1–M15, N1–N8, Załącznik R) i po niezależnej recenzji technicznej (T1–T13, Załącznik T)) · 2026-10-08 · podstawa: `reports/foldery-analysis.md` (dalej „Raport”), Foldery `main` @ `be31a48`.
 Słowniczek pojęć: Raport, początek pliku.
 
 ## 0. Idea w trzech zdaniach
@@ -61,7 +61,8 @@ Każda faza kończy się commitem i **pushem gałęzi sesji** (praca w chmurze g
 5. `doc_check` jest od teraz czerwony na gałęzi (brak `GaleriaFolderow/CLAUDE.md`). To akceptowalne, bo nic nie jest scalane przed A6.
 
 ### A1. Infrastruktura
-- `.gitignore`: usunąć `.claude/`, dodać `.claude/worktrees/` i `.claude/settings.local.json`. Wcześniej `git status --ignored`: czy nie wypłynie przypadkowy `.claude/`.
+- `.gitignore`: usunąć `.claude/`, dodać `.claude/worktrees/` i `.claude/settings.local.json`.
+- `.gitattributes`: `*.sh text eol=lf` i `*.py text eol=lf` dla `.claude/hooks/`. Skrypt hooka z końcówkami CRLF (np. wgrany z Windowsa) kończy się kodem 2, czyli **blokuje każde wywołanie Bash** [MEASURED n=1: recenzent-sceptyk E4]. Wcześniej `git status --ignored`: czy nie wypłynie przypadkowy `.claude/`.
 
 ### A2. Mapa przeniesień (konkordancja)
 1. Skrypt (scratchpad, nie repo) listuje akapity archiwum: nr linii, pierwsze 90 znaków lead-inu `**…**`, rozmiar.
@@ -136,6 +137,7 @@ Każda faza kończy się commitem i **pushem gałęzi sesji** (praca w chmurze g
    6. `../.github/workflows/*.yml`: klucze pod `on:` (forma blokowa i inline, np. `on: push`, `on: [push, workflow_dispatch]`) to **wyłącznie** `workflow_dispatch` (lista dozwolonych, nie zakazanych: łapie też `schedule`, `workflow_run`, `pull_request_target`, T8). Wszystkie odczyty przez `read(<dokładna ścieżka względna>)`, a katalogi listuje `os` (wzorzec testu mutacyjnego).
    7. Pliki z nagłówkiem „stan: skondensowany” (etap B) nie zawierają lead-inów `**v4.` (M7c).
    8. Każdy plik `dokumentacja/architektura/*.md` i `dokumentacja/spec/*.md`, którego nie ma w `KONKORDANCJA.tsv` (czyli nowy po migracji), musi mieć nagłówek „stan: skondensowany”. `doc_check` wypisuje (bez błędu) liczbę plików jeszcze nieskondensowanych, a STATUS.md je wymienia (N8).
+   10. Żaden plik w `../.claude/hooks/` nie zawiera znaku `\r` (CRLF), a definicje `../.claude/agents/*.md` i `../.claude/skills/*/SKILL.md` mają `---` w linii 1 oraz pole `name` (agenci) i `description`. Literówka w polu jest ignorowana bez komunikatu, a plik bez `name` jest pomijany (O0 §4, O2 §B1).
    9. `../.claude/rules/galeria-niezmienniki.md` zaczyna się od `---` w linii 1, zawiera `paths:` z `GaleriaFolderow/galeria.py` i zamykające `---`. Zepsuty YAML sprawiłby, że reguła (~15k tok.) ładowałaby się w każdej sesji na starcie [SOURCE: CC memory.md, „Rule frontmatter reference”] (N6).
 6. **`tests/test_logic.py`**, blok „v47+ dokumentacja” (~l. 10433–10454):
    - mutacja wersji 9.99.9 musi dać komunikaty z `CHANGELOG`, `STATUS`, `MAPA.md §4`, `README` (`len ≥ 4`);
@@ -337,11 +339,13 @@ Nowa sesja zaczyna od `origin/main`, czyli już po scaleniu. Poprawki idą „do
 
 ## Załącznik S: `guard_bash.py` i przypadki testowe
 
-Autor: niezależny recenzent techniczny, przetestowane 22/22; ponowne sprawdzenie 8 przypadków w tej sesji: zgodne. Kopiować dosłownie do `.claude/hooks/guard_bash.py`.
+Autor: niezależny recenzent techniczny, przetestowane 22/22; ponowne sprawdzenie 8 przypadków w tej sesji: zgodne. **Poprawka po recenzji sceptyka (S4):** stan repo (gałąź, korzeń dla `doc_check`) jest liczony z pola `cwd` wejścia hooka, a nie z `CLAUDE_PROJECT_DIR`, które nie podąża za worktree [SOURCE: CC hooks part2 „Worktrees are different”]. Ponowny test: 8 przypadków zgodnych + przypadek worktree (`git push` w worktree na gałęzi `main` przy czerwonym `doc_check` → 2; w głównej kopii na gałęzi sesji → 0) [MEASURED: 2026-10-08]. Kopiować dosłownie do `.claude/hooks/guard_bash.py`.
 
 ```python
 import json, os, re, shlex, subprocess, sys
-cmd = json.load(sys.stdin).get("tool_input", {}).get("command", "") or ""
+_in = json.load(sys.stdin)
+cmd = _in.get("tool_input", {}).get("command", "") or ""
+CWD = _in.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR", ".")
 def segments(s):
     lx = shlex.shlex(s.replace("\n", " ; "), posix=True, punctuation_chars=";&|")
     lx.whitespace_split = True
@@ -381,12 +385,13 @@ for seg in segs:
     refs = pos[1:]
     dst_main = any(re.search(r"(^|:)(refs/heads/)?main$", r) for r in refs) or "--all" in opts
     if not refs:
-        cur = subprocess.run(["git", "-C", os.environ.get("CLAUDE_PROJECT_DIR", "."), "branch", "--show-current"],
+        cur = subprocess.run(["git", "-C", CWD, "branch", "--show-current"],
                              capture_output=True, text=True).stdout.strip()
         dst_main = dst_main or cur == "main" or to_main_ctx
     need_doc = need_doc or dst_main
 if need_doc:
-    root = os.path.join(os.environ.get("CLAUDE_PROJECT_DIR", "."), "GaleriaFolderow")
+    top = subprocess.run(["git", "-C", CWD, "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip() or CWD
+    root = os.path.join(top, "GaleriaFolderow")
     r = subprocess.run([sys.executable, "tools/doc_check.py"], cwd=root, capture_output=True, text=True)
     if r.returncode != 0:
         block("BLOKADA push na main: doc_check czerwony - najpierw dokumentacja:\n" + r.stdout + r.stderr)

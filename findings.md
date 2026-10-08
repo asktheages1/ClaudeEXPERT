@@ -3,6 +3,13 @@
 Important findings, crucial information and notable interactions from sessions. Newest first.
 Format: `## YYYY-MM-DD — title`, then the fact with its evidence tag (see CLAUDE.md "Evidence tags"). Promote confirmed, general facts to `knowledge/` (with the owner's approval) and note it here.
 
+## 2026-10-08 — Skeptic reviewer probes: git mv, large rules, external imports, CRLF hooks
+- `git mv sub/CLAUDE.md archive/OLD.md` followed by Read in `sub/` produced no `nested_memory` for the moved file; a 115 KB `.claude/rules/big.md` (`paths: sub/**`) loaded in full (start and end canaries) [MEASURED: reviewer agent, claude -p --model sonnet --effort low, 2026-10-08, CC 2.1.294, claude-sonnet-5-5, n=1, 0.19 USD].
+- `claude -p "/context"` with `CLAUDE.md` importing files outside its working directory (absolute and `../` paths) silently drops them from Memory files; only in-directory imports load (external imports need an approval dialog that `-p` never shows) [MEASURED: reviewer agent, n=1, 0 USD; SOURCE: CC memory part1]. Measure token weights from copies inside the scratch directory.
+- A hook script with CRLF line endings run via `bash` exits 2 on allow and block inputs alike, i.e. as PreToolUse it would block every Bash call [MEASURED: reviewer agent, plain bash, n=1]. Use `.gitattributes eol=lf` and check for `\r`.
+- `guard_bash.py` in the Foldery plan now reads repo state from the hook input `cwd` (CLAUDE_PROJECT_DIR does not follow worktrees, CC hooks part2); re-tested incl. a worktree on `main` [MEASURED: 2026-10-08].
+- General principles derived from the Foldery plan: `reports/zasady-migracji-dokumentacji.md` (v3, scope: owner's Claude-built apps in cloud sessions).
+
 ## 2026-10-08 — Hook design pitfalls found by plan reviewers (Foldery migration plan)
 - Regex guards over the whole Bash command string both false-block (`git push … && rm -f x`, `+` in a commit message) and miss force forms (`-fu`, `"+HEAD:main"`, `git -c k=v push --force`, `--mirror`); a shlex tokeniser per subcommand passed 22/22 cases [MEASURED: reviewer agent, re-checked 8/8 here, 2026-10-08]. Script: `reports/foldery-migration-plan.md` Appendix S.
 - `sha1(git status --porcelain)` as a per-turn baseline does not change when an already-modified file is edited again; include `git diff HEAD --binary` and untracked file hashes [MEASURED: reviewer agent, temp repo, n=1].
