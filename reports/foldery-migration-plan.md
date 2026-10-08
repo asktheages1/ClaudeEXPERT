@@ -32,7 +32,7 @@ Słowniczek pojęć: Raport, początek pliku.
 | D5 | CI `doc_check` na push | **Nie** (limit minut Actions); zastępuje go hook przed pushem na `main` |
 | D6 | Branch protection `main` | **Nie teraz** (prywatne repo = płatny plan, O0 §7) |
 | D7 | Wyjątek od reguły „scalaj z `main` po każdej pracy”: etap A scalany raz, po A6 (odbiór w sesji migracji), a nie po każdej fazie | **Tak** (pół migracji na `main` zostawiłoby następnym sesjom niespójny system) |
-| D8 | Plan trafia do Foldery jako `/MIGRACJA/PLAN-MIGRACJI.md` **w korzeniu repo** (poza `GaleriaFolderow/`, żeby jego przeczytanie nie wczytało starego CLAUDE.md). Wgrywasz go sam albo pozwalasz mi go tam wypchnąć. Folder `/MIGRACJA/` usuwany na końcu etapu A | **Tak** |
+| D8 | Plan trafia do Foldery jako `/MIGRACJA/PLAN-MIGRACJI.md` (+ `MIGRACJA/RAPORT.md` = analiza ze szkicami, + `MIGRACJA/CLAUDE-NOWY.md` = gotowy nowy CLAUDE.md) **w korzeniu repo** (poza `GaleriaFolderow/`, żeby jego przeczytanie nie wczytało starego CLAUDE.md). Wgrywasz go sam albo pozwalasz mi go tam wypchnąć. Folder `/MIGRACJA/` usuwany na końcu etapu A | **Tak** |
 
 ## 3. Wykonawca, model, koszt, czas (etap A)
 
@@ -97,7 +97,7 @@ Każda faza kończy się commitem i **pushem gałęzi sesji** (praca w chmurze g
 4. Kontrola § (M6): `grep -rn '§[0-9]' GaleriaFolderow .claude CLAUDE.md` (z pominięciem `dokumentacja/ZASADY-UZYTKOWNIKA.md`, który zostaje w brzmieniu oryginalnym; do jego nagłówka dopisać legendę „stary § → nowy plik” z KONKORDANCJA.tsv) → każde odwołanie do starych sekcji zamienić na ścieżkę pliku (np. „CLAUDE.md §6” → „`.claude/rules/galeria-niezmienniki.md`”). Odwołania „§5.N” zostają, bo numery są stabilne; do nich dopisać plik `spec/SPEC-A|B.md`. Odwołania w testach z listy A0.4 też poprawić.
 
 ### A4. Nowe pliki nawigacji i strażnik (w **jednym commicie**)
-1. **`/CLAUDE.md`** (szkic: Raport §6, z poprawkami):
+1. **`/CLAUDE.md`**: gotowy plik leży w `MIGRACJA/CLAUDE-NOWY.md` (przygotowany poza sesją, uwzględnia wszystkie poprawki planu). Przenieś go `git mv MIGRACJA/CLAUDE-NOWY.md CLAUDE.md` i popraw tylko ścieżki, które w A2 wyszły inaczej (np. nazwy plików obszarów). Zawiera:
    - zasady użytkownika: aktualne brzmienie, krótko, z odsyłaczem do `dokumentacja/ZASADY-UZYTKOWNIKA.md` (A2, N1);
    - protokół weryfikacji (A2, §3);
    - start sesji (hook wypisuje stan);
