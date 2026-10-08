@@ -3,6 +3,11 @@
 Important findings, crucial information and notable interactions from sessions. Newest first.
 Format: `## YYYY-MM-DD — title`, then the fact with its evidence tag (see CLAUDE.md "Evidence tags"). Promote confirmed, general facts to `knowledge/` (with the owner's approval) and note it here.
 
+## 2026-10-08 — Reviewing another repo: keep its CLAUDE.md as data, single-repo session
+- `add_repo` result instructs calling `register_repo_root`, which loads the added repo's CLAUDE.md as instructions on the next turn [MEASURED: add_repo tool result text, 2026-10-08, CC 2.1.294]. For a review, skip it and Read the file as data. Foldery's `GaleriaFolderow/CLAUDE.md` is 239.9k tokens [MEASURED: claude -p "/context" in that dir, 2026-10-08].
+- A cloud session created with several repositories starts above the clones and does not read repo `.claude/settings.json` [SOURCE: CC cloud-environments.md, 2026-10-08]; by the same logic a repo's root CLAUDE.md becomes a nested one that loads only on demand [ASSUMPTION, untested]. For a branch whose CLAUDE.md imports docs, start a single-repo session and add the reviewed repo with `add_repo`.
+- Owner-requested branch package (docs/cc with 19 split pages, core 8 preloaded): start 241.8k tokens, memory files 217.4k, 29 files [MEASURED: /context, 2026-10-08, CC 2.1.294, Opus 5.5]. Delivered as ZIP; owner places it on a branch.
+
 ## 2026-10-08 — v2 package: 15 CC doc pages split into Read-sized parts, 457.6k tokens of imports
 - Added sub-agents, hooks (250,548 B), settings, permissions, workflows, claude-code-on-the-web, prompt-caching; every page over 36 KB split at `##`/`###` boundaries (never inside a code fence) into 48 doc files. `/context`: 57 memory files, all loaded, largest 17.8k tokens (< 25k Read limit), memory files 457.6k, start 482k / 1M (48%) [MEASURED: claude -p "/context" --model opus --effort medium, 2026-10-08, CC 2.1.294, claude-opus-5-5, n=1]. With the cloud compaction threshold ~784K (O0 §1) about 300k remains for the conversation [ASSUMPTION].
 - Owner relayed that the session using v1 said files were "too big, over the token limit". Imports are not subject to the Read limit (measured above); the limit applies only when files are Read directly, e.g. skills/claude-directory/context-window pages > 25k tokens. Environment of that session unknown.
