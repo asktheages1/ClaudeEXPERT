@@ -2,7 +2,7 @@
 
 As of 2026-10-03/04 · Claude Code 2.1.289 · research model `claude-opus-5-5` (1M window) · Linux cloud container, 4 vCPU.
 
-**Size budget of this file: ≤ 40 KB and ≤ 22,500 Read-counter tokens** — one Read (limit 25,000 tokens, §1) with ~10% margin. File state: 38,565 B, 17,754 tokens of content [MEASURED: Read counter on the file repeated 3×, (53,269 − 7)/3, 2026-10-06]. Polish original: 40,050 B, 21,873 tokens [MEASURED: Read counter, (43,753 − 7)/2, 2026-10-06].
+**Size budget of this file: ≤ 40 KB and ≤ 22,500 Read-counter tokens** — one Read (limit 25,000 tokens, §1) with ~10% margin. File state: 39,139 B (2026-10-08, after [CL] additions for 2.1.292–2.1.293), 17,754 tokens of content at 38,565 B [MEASURED: Read counter on the file repeated 3×, (53,269 − 7)/3, 2026-10-06] + ~250 tokens [ASSUMPTION; re-measure]. Polish original: 40,050 B, 21,873 tokens [MEASURED: Read counter, (43,753 − 7)/2, 2026-10-06].
 
 **Session reading budget** [ASSUMPTION with calculation]: files read in full together ≤ 200k tokens, each ≤ 25k, rest in fragments or via agents; after start (~76k) and the 200k full-read budget, ~508k remains to the cloud compaction threshold (~784k, §1). Peaks: workflow agents 98–300k (single-topic agents 164–228, overall-assessment agent 300), main window 488k after ~5 h, no compaction (from 01:46Z the window transcript also has entries of nested `claude -p`, U5-31) [MEASURED: peak column of workflow cost summary; window transcript usage, 2026-10-04].
 
@@ -35,7 +35,7 @@ Tags: [SOURCE: URL, date] · [MEASURED: command → result, date] · [CODE: loca
 ## 2. Instructions, memory, skills, visibility
 
 - CLAUDE.md: managed, user, project, local; from working dir and parents, concatenated from root down [SOURCE: CC memory.md] (T2a-08, T2a-09)
-- Subdirectory CLAUDE.md enters in full on Read of a file from it (since 2.1.288 also Write/Edit); .ignore doesn't block [MEASURED: Read of 2 lines → nested_memory 18.5 KB] (T2a-10, T2a-11, T2a-S-04)
+- Subdirectory CLAUDE.md enters in full on Read of a file from it (since 2.1.288 also Write/Edit; since 2.1.293 also a single-file `cat`, `head`, `tail`, `sed -n` or `grep` in Bash, same for `paths` rules [CL 2.1.293, 2026-10-08]); .ignore doesn't block [MEASURED: Read of 2 lines → nested_memory 18.5 KB] (T2a-10, T2a-11, T2a-S-04)
 - @ imports and .claude/rules without paths load at start, don't save context; recommended <200 lines, longer file lowers adherence; hard block: §6 [SOURCE: CC memory.md] (T2a-12, T2a-13, T2a-14, T2a-15)
 - Instruction file 31.6 KB = 16,094 tokens; agent start with it costlier by 16.2-16.6k (upper bound) [MEASURED: claude -p with/without CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 → 33,175 / 49,392; Read counter, 2026-10-04] (T1a-S-03, U2-29, T2a-04, U1-16, U1-17)
 - Editing CLAUDE.md in session has no effect until /compact, /clear or restart; no /clear in cloud [SOURCE: CC prompt-caching.md, claude-code-on-the-web.md, 2026-10-04] (U2-01, U2-S-05)
@@ -59,7 +59,7 @@ Tags: [SOURCE: URL, date] · [MEASURED: command → result, date] · [CODE: loca
 - git status snapshot: nobody gets it in cloud; locally subagents except Explore/Plan [SOURCE: CC settings-reference.md, 2026-10-04] [MEASURED: 0 of 33 transcripts, 2026-10-04] (U2-33, U2-35, T2a-26)
 
 ## 3. Agents, workflow, ultracode
-- Agent tool: `model` field (aliases sonnet/opus/haiku/fable only) and `isolation`, NO effort field [CODE: Agent schema] (T3-04)
+- Agent tool: `model` field (aliases sonnet/opus/haiku/fable only) and `isolation`; no effort field up to 2.1.291 [CODE: Agent schema] (T3-04); `effort` parameter since 2.1.292 [CL 2.1.292] [MEASURED: Agent schema in CC 2.1.294 session, 2026-10-08]; precedence vs agent frontmatter `effort` unverified
 - Subagent without `effort` inherits session; extended thinking always from window [SOURCE: CC sub-agents.md] (T3-03, T3-10); effort precedence: §5
 - Workflow agent: `opts.model`/`opts.effort` per agent, omitted = session [CODE: workflow-authoring skill] [MEASURED: effort in transcripts: general-purpose, Explore = session (xhigh); frontmatter medium → medium; opts.effort high → high, 2026-10-04] (T3-05, T3-06)
 - Explore and Plan: usually window model, no CLAUDE.md; subagent in worktree takes CLAUDE.md from window, not from copy [SOURCE: CC sub-agents.md, worktrees.md] (T3-09, T3-18)
@@ -104,7 +104,7 @@ Tags: [SOURCE: URL, date] · [MEASURED: command → result, date] · [CODE: loca
 - Classifier denial = tool result after 8.7 s (deny 0.00-0.01 s); agent continues without asking; in transcript owner sees it only in agent's report [MEASURED: agent transcripts, 2026-10-04] (U3-15, U3-17, U3-S-05). User asked after 3 blocks in a row / 20 total; no server verdict = denial with message, after 10 such responses in a row turn / subagent stops [SOURCE: CC permission-modes.md, errors.md, 2026-10-04] (U3-21, U3-23)
 
 ## 5. Models and effort
-- Models: Fable 5.1 `claude-fable-5-1` (hardest, long agentic tasks), Opus 5.5 `claude-opus-5-5` (start for most), Sonnet 5.5 `claude-sonnet-5-5`, Haiku 4.5 `claude-haiku-4-5-20251001` (no effort, retirement 2026-10-15 at earliest) [SOURCE: PL models/overview.md] (T4-01, T4-06)
+- Models: Fable 5.1 `claude-fable-5-1` (hardest, long agentic tasks), Opus 5.5 `claude-opus-5-5` (start for most), Sonnet 5.5 `claude-sonnet-5-5`, Haiku 4.5 `claude-haiku-4-5-20251001` (no effort, retirement 2026-10-15 at earliest) [SOURCE: PL models/overview.md] (T4-01, T4-06); Haiku 5.5 `claude-haiku-5-5` added in CC 2.1.293 as default Haiku: 1M context, 0.10/0.50 USD per MTok (0.50/2.50 over 100K prompt) [CL 2.1.293, 2026-10-08]; effort support and Haiku 4.5 retirement date unverified
 - USD/MTok input/output/cache read: Fable 5.1 10/50/0.25; Opus 5.5 4/20/0.20; Sonnet 5.5 2/10/0.20; Haiku 1/5/0.10; Fable÷Opus = 2.5×, cache read 1.25× [SOURCE: PL about-claude/pricing.md] (T4-02, T4-26)
 - Compaction: threshold §1; in cloud own CLAUDE_AUTOCOMPACT_PCT_OVERRIDE value changes nothing; window changed by CLAUDE_CODE_AUTO_COMPACT_WINDOW or /autocompact [SOURCE: CC claude-code-on-the-web.md] (T4-03, T4-S-05)
 - Aliases (API): opus→Opus 5.5, sonnet→Sonnet 5.5, fable→Fable 5.1, best→fable/opus, opusplan = opus in plan, sonnet in execution; `default` = Opus 5.5, unless org/account model [SOURCE: CC model-config.md] (T4-04, U4-20, U4-11)
@@ -115,7 +115,7 @@ Tags: [SOURCE: URL, date] · [MEASURED: command → result, date] · [CODE: loca
 - How to set:
   - session: `/effort <level>`, `/model` (Enter saves, `s` session only); in cloud only with argument [SOURCE: CC claude-code-on-the-web.md] (T4-30, T4-S-03)
   - `claude -p`: `--model`, `--effort`; doesn't inherit parent's effort (CLAUDE_EFFORT is a readout) [MEASURED: CLAUDE_EFFORT=high, -p without --effort -> medium] (U4-18, U4-S-03, T4-14)
-  - agent: `effort` in frontmatter; ad hoc subagent = session effort (§3) (T4-S-01, T4-15)
+  - agent: `effort` in frontmatter; ad hoc subagent = session effort, or the Agent tool's `effort` parameter since 2.1.292 (§3) (T4-S-01, T4-15)
   - workflow: `opts.effort`/`opts.model` (§3) (T4-S-02, T4-21)
 - Actual effort: effort field in JSONL transcript or $CLAUDE_EFFORT; self-report "reasoning_effort N" ungrounded [MEASURED: script over transcripts] (T4-15, T4-19)
 - Anthropic benchmark, Opus 5.5 SWE-bench Pro vs high: medium −2.5 pts for ~70% of cost, low −8 pts for ~1/3, xhigh +1.4 pts for 2.5×; Opus 5.5 medium = Fable 5.1 high (92.8 vs 92.3%) for ~1/5 of cost [SOURCE: PL about-claude/models/optimizing-for-cost-and-intelligence.md] (T4-11, T4-12)
