@@ -1,6 +1,6 @@
 # Zasady ogólne migracji systemu dokumentacji: aplikacje właściciela budowane z Claude
 
-Wersja 3 · 2026-10-08 · Claude Code 2.1.294 · po recenzji sceptyka (dwa raporty: przed i po doprecyzowaniu zakresu, Załącznik Z).
+Wersja 3.1 · 2026-10-08 · Claude Code 2.1.294 · po recenzji sceptyka (Załącznik Z) i przeglądzie trwałości planu Foldery 4.2 (Z27 poprawiona, nowe Z28–Z30).
 Źródło przypadku: `reports/foldery-analysis.md` i `reports/foldery-migration-plan.md` (wersja 4).
 Słowniczek pojęć: `reports/foldery-analysis.md`, początek pliku.
 
@@ -273,7 +273,7 @@ Uwagi do tabeli:
 **Z20. Dwa etapy: bezstratne przeniesienie, potem kondensacja po obszarze.**
 - Reguła:
   - **Etap A** (jedna sesja): tekst przenosi skrypt według zakresów linii (konkordancja), a nie model; dochodzą nowa nawigacja, strażnik, hooki, agenci.
-  - **Etap B**: przepisanie „do stanu obecnego” obszar po obszarze, przy okazji pracy w obszarze, z recenzentem.
+  - **Etap B**: przepisanie „do stanu obecnego” plik po pliku, w osobnych sesjach z kolejką w STATUS, z recenzentem; do tego czasu pliki dosłowne zamrożone (Z29).
 - Dowód: zysk ładowania wynika z położenia tekstu (Z3–Z7); przepisanie całości naraz koncentruje ryzyko (recenzja „meta”, plan, Załącznik R). Skuteczność w praktyce jest **niezmierzona**, bo plan Foldery nie został jeszcze wykonany [ASSUMPTION].
 - Sprawdzian:
   - zakresy pokrywają wszystkie linie źródła bez luk i nakładek;
@@ -317,7 +317,8 @@ Uwagi do tabeli:
 
 **Z27. Właściciel na Windowsie, praca w chmurze Linux: końcówki linii i dostarczane pliki.**
 - Reguła:
-  - commituj `.gitattributes` z `eol=lf` dla skryptów hooków i narzędzi (`*.sh`, `*.py`);
+  - hooki pisz w Pythonie (CRLF mu nie szkodzi), a hooki, które nie mają niczego blokować, kończ zawsze kodem 0; hook basha z błędem składni kończy się kodem 2, co w UserPromptSubmit odrzuca **każdy** prompt [SOURCE: CC hooks part3];
+  - `.gitattributes` z `eol=lf` to higiena, nie ochrona: plik zapisany do repo bez `git add` (np. wgrany przez stronę GitHuba) zachowuje `\r\n` po sklonowaniu [MEASURED n=1: repo testowe, `git update-index --cacheinfo`, 2026-10-08];
   - strażnik sprawdza, że w `.claude/hooks/` nie ma `\r`;
   - po każdym ręcznym wgraniu plików przez GitHub z Windowsa wykonaj prowokację każdego hooka;
   - pliki uruchamiane przez Ciebie na Windowsie (`.bat`, instrukcje) dostają CRLF i ASCII według reguł projektu, a sesja zawsze mówi wprost, czego nie dało się uruchomić (Windows, GPU, prawdziwe pliki).
@@ -325,6 +326,20 @@ Uwagi do tabeli:
   - skrypt hooka z CRLF uruchomiony przez `bash` kończy się kodem 2, czyli w PreToolUse blokuje każde wywołanie [MEASURED n=1: sceptyk E4];
   - reguły CRLF/ASCII i „powiedz, czego nie uruchomiono” to stałe zasady Foldery [SOURCE: pliki Foldery §2, §3].
 - Sprawdzian: `grep -l $'\r' .claude/hooks/*` puste; prowokacje po wgraniu.
+
+**Z28. Trwałość: strażnik patrzy na zmiany, nie tylko na pliki.**
+- Reguła: przy pushu na gałąź główną hook liczy różnicę gałęzi względem `origin/main` i wymaga: zmienionego pliku stanu (STATUS) w każdej gałęzi ze zmianami; przy zmianie kodu także CHANGELOG i pliku dokumentacji, albo jawnej linii „docs: bez zmian (powód)”. Strażnik w testach widzi tylko bieżące pliki, więc nie wykryje, że dokumentacja nie nadąża za kodem.
+- Dowód: w planie Foldery 4.1 jedyne twarde warunki dotyczyły napisów wersji, rozmiarów i odsyłaczy [SOURCE: plan 4.1 A4.5]; implementacja i test: `reports/foldery-hooks/` [MEASURED: 60/60, 2026-10-08].
+- Granica: furtka „bez zmian” jest zapisem, nie oceną; treść ocenia tylko recenzent (miękkie).
+
+**Z29. Pliki przeniesione dosłownie zamrażaj do kondensacji.**
+- Reguła: sumy sha256 plików dosłownych w pliku listy; strażnik odrzuca każdą ich zmianę, dopóki plik nie ma nagłówka „stan: skondensowany”. Zmiany w międzyczasie idą do CHANGELOG i STATUS. Kondensacja to osobne sesje zlecane przez właściciela, z kolejką w STATUS, a nie „przy okazji” z prawem odłożenia.
+- Dowód: bez zamrożenia sesja dopisywałaby akapity „na górze”, bo tak każe treść pliku dosłownego (plan 4.1, U2) [ASSUMPTION co do zachowania modelu].
+- Kiedy nie stosować: migracja bez etapu dosłownego (Z20, „kiedy nie stosować”).
+
+**Z30. Treść generowana nie trafia do pliku z limitem rozmiaru.**
+- Reguła: wynik generatora (np. mapa kodu) generuj na żądanie albo trzymaj w osobnym pliku bez ręcznej treści; w pliku nawigacji z limitem bajtów rośnie z kodem i kiedyś zablokuje strażnika.
+- Dowód: MAPA §4 Foldery (plan 4.1 → 4.2, U3).
 
 **Z26. Odrzucone mechanizmy, które się uogólniają.**
 - Output style: zastępuje instrukcje inżynierskie (chyba że `keep-coding-instructions`) i działa tylko w głównym oknie (O0 §2).
@@ -346,11 +361,11 @@ Uwagi do tabeli:
    - A2: konkordancja (zakres → plik, stabilne identyfikatory sekcji);
    - A3: przeniesienie skryptem, nagłówki (Z12), dowód bezstratności na zapisanym SHA, poprawa odwołań;
    - A4: nowy CLAUDE.md (z `@AGENTS.md`, jeśli trzeba, Z5), STATUS, nawigacja, strażnik + test mutacyjny w jednym commicie (Z22);
-   - A5: ustawienia, hooki (Z16, Z27), agenci (Z18), skille (Z8), ścieżka zapasowa dla chronionych ścieżek (Z19); strażnik sprawdza też frontmatter agentów i skilli (literówka w polu jest ignorowana bez komunikatu, plik bez `name` pomijany; O0 §4) oraz brak `\r` w hookach;
+   - A5: ustawienia, hooki (Z16, Z27, Z28), agenci (Z18), skille (Z8), ścieżka zapasowa dla chronionych ścieżek (Z19); strażnik sprawdza też frontmatter agentów i skilli (literówka w polu jest ignorowana bez komunikatu, plik bez `name` pomijany; O0 §4) oraz brak `\r` w hookach;
    - A6: odbiór w sesji, scalenie albo PR;
    - A7: odbiór w nowej sesji;
    - A8: setup script.
-5. **Etap B**: „kondensuj przy dotknięciu obszaru”, prawo odłożenia z wpisem w STATUS, recenzent per obszar, strażnik plików skondensowanych, licznik nieskondensowanych, usunięcie archiwum na końcu.
+5. **Etap B**: zamrożenie plików dosłownych (Z29), sesje kondensacji z kolejką w STATUS, recenzent per plik, strażnik plików skondensowanych, licznik nieskondensowanych, usunięcie archiwum na końcu.
 6. **Ryzyka i wycofanie** (Z24).
 7. **Reguły dla następców** w nowym CLAUDE.md: jeden fakt w jednym miejscu, przepisuj zamiast dopisywać, limity, bez dużych importów, pomiar po zmianie modelu, okresowy `/doctor prompt-audit` (O0 §6).
 
@@ -375,7 +390,7 @@ Uwagi do tabeli:
 ## 9. Granice uogólnienia i rzeczy niezweryfikowane
 
 - **Ogólne w zakresie (oparte na dokumentacji i pomiarach KB):** Z1–Z7, Z10, Z13, Z16–Z19, Z20a, Z20b, Z21, Z26, Z27.
-- **Wzorce z jednego projektu (Foldery), do potwierdzenia:** Z8 (w części), Z9, Z11, Z12, Z14, Z15, Z20, Z22–Z25. Plan Foldery nie został wykonany, więc proces jest sprawdzony rozumowaniem i recenzją, nie praktyką.
+- **Wzorce z jednego projektu (Foldery), do potwierdzenia:** Z8 (w części), Z9, Z11, Z12, Z14, Z15, Z20, Z22–Z25, Z28–Z30. Plan Foldery nie został wykonany, więc proces jest sprawdzony rozumowaniem i recenzją, nie praktyką.
 - **Pomiary n=1:**
   - ładowanie przez `cat`/`head`;
   - zagnieżdżony plik u Explore;

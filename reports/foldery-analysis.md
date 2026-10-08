@@ -253,6 +253,8 @@ Skrypt nie policzy tokenów bez API, a bajty liczy deterministycznie. Ratio spra
 
 ### Szkice (gotowe do wklejenia przez sesję Foldery; tu niezapisane do repo)
 
+> **Nieaktualne od planu 4.2:** szkice hooków i `settings.json` poniżej zastąpił `reports/foldery-hooks/hooks.py` (Python, test 60/60) i sekcja A5 planu. Szkic `/CLAUDE.md` zastąpił `reports/foldery-CLAUDE-NOWY.md`. Lista treści `agent-rules.md` nadal obowiązuje.
+
 **`/CLAUDE.md`** (angielski, zgodnie z Twoją konwencją; ~80 linii):
 ```markdown
 # Galeria folderów — instructions for Claude
