@@ -16,7 +16,7 @@ Słowniczek pojęć: Raport, początek pliku.
 | K1 | Instrukcje projektu na starcie sesji ≤ 8k tokenów | `/context` → Memory files + wynik SessionStart | 0 na starcie, 239,9k po pierwszym Read |
 | K2 | Instrukcje po pierwszym Read `galeria.py` ≤ 25k tokenów | `/context` po Read `galeria.py` z `limit` | 239,9k |
 | K3 | Każdy plik w `dokumentacja/` i `MAPA.md` ≤ 40 KB (≈ ≤ 20k tok., jeden Read) | `doc_check` (bajty) + pomiar `/context` próbki | MAPA 29,4k, USUWANIE 44,8k tok. |
-| K4 | Etap A bezstratny: każda linia starego CLAUDE.md i MAPA §9 jest w dokładnie jednym miejscu docelowym | skrypt konkordancji (A3.4) = 100%, `diff` dla kopii dosłownych | — |
+| K4 | Etap A bezstratny: każda linia starego CLAUDE.md i MAPA §9 jest w dokładnie jednym miejscu docelowym | skrypt konkordancji (A3.3) = 100%, `diff` dla kopii dosłownych | — |
 | K5 | Blokowane przez program: force-push, push na `main` przy czerwonym `doc_check`, trigger `push:` w CI, edycja `backup/`, zapis plików przez narzędzia GitHub MCP | prowokacje A6 (`--dry-run`) | 0 blokad |
 | K6 | `./tools/testy.sh` zielone (poza znanym czerwonym „v4.18.5: siatka gruba i mocna”) | testy | zielone |
 | K7 | Test mutacyjny `doc_check` w `test_logic` przechodzi na nowym układzie | `test_logic` | jest, na starym |
@@ -90,7 +90,7 @@ Każda faza kończy się commitem i **pushem gałęzi sesji** (praca w chmurze g
    - wynik 100% albo lista różnic do wyjaśnienia;
    - to samo dla MAPA §9 i podziału USUWANIE;
    - **uruchamiany na commicie zrobionym zaraz po A3.2, zanim A3.4/A4 zmienią przeniesione linie (N2)**; SHA tego commita i wynik zapisz w POSTEP.md; późniejsze sprawdzenia (A6.4, recenzent) liczą konkordancję względem tego SHA (`git show <sha>:<plik>`), a nie względem bieżących plików.
-4. Kontrola § (M6): `grep -rn '§[0-9]' GaleriaFolderow .claude CLAUDE.md` → każde odwołanie do starych sekcji zamienić na ścieżkę pliku (np. „CLAUDE.md §6” → „`.claude/rules/galeria-niezmienniki.md`”). Odwołania „§5.N” zostają, bo numery są stabilne; do nich dopisać plik `spec/SPEC-A|B.md`. Odwołania w testach z listy A0.4 też poprawić.
+4. Kontrola § (M6): `grep -rn '§[0-9]' GaleriaFolderow .claude CLAUDE.md` (z pominięciem `dokumentacja/ZASADY-UZYTKOWNIKA.md`, który zostaje w brzmieniu oryginalnym; do jego nagłówka dopisać legendę „stary § → nowy plik” z KONKORDANCJA.tsv) → każde odwołanie do starych sekcji zamienić na ścieżkę pliku (np. „CLAUDE.md §6” → „`.claude/rules/galeria-niezmienniki.md`”). Odwołania „§5.N” zostają, bo numery są stabilne; do nich dopisać plik `spec/SPEC-A|B.md`. Odwołania w testach z listy A0.4 też poprawić.
 
 ### A4. Nowe pliki nawigacji i strażnik (w **jednym commicie**)
 1. **`/CLAUDE.md`** (szkic: Raport §6, z poprawkami):
