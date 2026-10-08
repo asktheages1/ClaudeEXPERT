@@ -3,6 +3,11 @@
 Important findings, crucial information and notable interactions from sessions. Newest first.
 Format: `## YYYY-MM-DD — title`, then the fact with its evidence tag (see CLAUDE.md "Evidence tags"). Promote confirmed, general facts to `knowledge/` (with the owner's approval) and note it here.
 
+## 2026-10-08 — Nested CLAUDE.md with `@` imports loads whole documents on demand, past the Read limit
+- Setup: `quiz/CLAUDE.md` with `- @a.md` and `- @b.md` (a.md 219,831 B with canaries at start, middle, end); `claude -p` told to Read only `quiz/trigger.txt` and list visible canaries → all 4 canaries listed; one turn added ~104k tokens of cache creation, i.e. the import is not bound by the 25,000-token Read limit [MEASURED: claude -p --model sonnet --effort low, 2026-10-08, CC 2.1.294, claude-sonnet-5-5, n=1, 0.56 USD]. Docs: imports expand recursively up to four hops, paths relative to the importing file; a CLAUDE.md up to 4 MiB loads in full; nested files reload on demand after compaction [SOURCE: https://code.claude.com/docs/en/memory.md, 2026-10-08].
+- Syntax pitfall: `Ladowane pliki: @rozdzial3.md, @rozdzial4.md` imported only rozdzial4.md; the comma became part of the first path and that import failed silently [MEASURED: same probe, n=1, 0.05 USD]. Consistent with docs ("the path ends at the first space"). Use one import per line or separate with spaces only.
+- Third-party reports: `@` imports in ancestor (parent-directory) CLAUDE.md files not expanded, some fixed, some open [IS: claudeissues.com mirrors of anthropics/claude-code issues 78216, 79046, 85683]. The descendant (subdirectory) case above worked.
+
 ## 2026-10-08 — Citations check precision, not completeness or optimality
 - Owner's experience: answers with a citation for every claim were still wrong or suboptimal, because a better or alternative mechanism for the given configuration was left out. A citation proves a fact exists, not that the answer considered all options [ASSUMPTION, owner report, 2026-10-08].
 - Working method for design answers: state goal and constraints, list every candidate mechanism, eliminate each with a reason, give failure conditions of the pick, test the pick (and the runner-up when it matters) by experiment.
