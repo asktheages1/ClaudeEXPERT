@@ -116,4 +116,46 @@ CLAUDE_PROJECT_DIR=/nonexistent python3 -I "$H" turn <<<"$J" >/dev/null 2>&1; ch
 sed 's/$/\r/' "$H" > "$T/crlf.py"
 python3 -I "$T/crlf.py" bash <<<"$(jq -n --arg c 'git push -f origin x' --arg d "$W" '{tool_input:{command:$c},cwd:$d}')" >/dev/null 2>&1; chk "CRLF: force-push" 2 $?
 python3 -I "$T/crlf.py" turn <<<"$J" >/dev/null 2>&1; chk "CRLF: turn" 0 $?
+# --- skeptic review K1-K6 ---
+cd "$W"; git checkout -q -f claude/s2 2>/dev/null; git worktree remove -f "$T/wt"
+newb() { git checkout -q -f -B "$1" origin/main; }
+full() { printf "$1\n" >> GaleriaFolderow/galeria.py; printf "$1\n" >> GaleriaFolderow/STATUS.md; printf -- "- v$1\n" >> GaleriaFolderow/CHANGELOG.md; }
+# K4: push to main via HEAD/@/wrappers (local main has code change only)
+git checkout -q -f main; printf '# k4\n' >> GaleriaFolderow/galeria.py; git commit -qam k4
+for c in 'git push origin HEAD' 'git push -u origin HEAD' 'git push origin @' 'timeout 60 git push origin main' '(git push origin main)' 'env X=1 git push origin main' 'command git push origin main' 'if git push origin main; then echo ok; fi' 'git push origin $(git branch --show-current)'; do bashcase 2 "$c"; done
+bashcase 2 'nice -n 5 git push -f origin x'
+bashcase 2 'timeout 60 git push --force'
+git reset -q --hard origin/main; git checkout -q -f claude/s2
+bashcase 0 'git push -u origin HEAD'                                  # session branch via HEAD
+git worktree add -q "$T/wt2" main 2>/dev/null
+bashcase 2 "cd $T/wt2 && git push" 1                                  # cd into worktree on main, RED
+git worktree remove -f "$T/wt2"
+# K5: merge chain + push main in one call is refused; push alone passes
+newb claude/k5; full k5; printf 'k5\n' >> GaleriaFolderow/dokumentacja/a.md; git commit -qam k5
+bashcase 2 'git fetch origin main && git push origin HEAD:main'
+bashcase 0 'git push origin HEAD:main'
+# K3: BACKLOG does not count as documentation
+newb claude/k3; full k3; mkdir -p GaleriaFolderow/dokumentacja; printf 'x\n' > GaleriaFolderow/dokumentacja/BACKLOG.md; git add -A; git commit -qm k3
+bashcase 2 'git push origin HEAD:main'
+# K2: missing origin/main blocks push to main
+newb claude/k2; full k2; printf 'k2\n' >> GaleriaFolderow/dokumentacja/a.md; git commit -qam k2
+git update-ref -d refs/remotes/origin/main
+bashcase 2 'git push origin HEAD:main'
+git fetch -q origin
+# K6: freeze list in origin/main
+git checkout -q -f main; mkdir -p GaleriaFolderow/dokumentacja/migracja
+printf 'GaleriaFolderow/dokumentacja/a.md\tabc\nGaleriaFolderow/dokumentacja/b.md\tdef\n' > GaleriaFolderow/dokumentacja/migracja/ZAMROZONE.tsv
+printf 'b\n' > GaleriaFolderow/dokumentacja/b.md; git add -A; git commit -qm freeze; git push -q origin main; git fetch -q origin
+newb claude/k6a; full k6a; printf 'cond\n' > GaleriaFolderow/dokumentacja/a.md; git commit -qam k6a
+bashcase 2 'git push origin HEAD:main'                                # condensation + code in one branch
+newb claude/k6b; printf 'k6b\n' >> GaleriaFolderow/STATUS.md; printf 'GaleriaFolderow/x.md\t0\n' >> GaleriaFolderow/dokumentacja/migracja/ZAMROZONE.tsv; git commit -qam k6b
+bashcase 2 'git push origin HEAD:main'                                # rows added to ZAMROZONE
+newb claude/k6c; printf 'k6c\n' >> GaleriaFolderow/STATUS.md; sed -i '/b.md/d' GaleriaFolderow/dokumentacja/migracja/ZAMROZONE.tsv; printf 'skondensowany\n' > GaleriaFolderow/dokumentacja/b.md; git commit -qam k6c
+bashcase 0 'git push origin HEAD:main'                                # row removed, condensation alone
+# K1: shell-form wrapper used in settings.json
+WR='[ ! -f "$CLAUDE_PROJECT_DIR/.claude/hooks/hooks.py" ] || exec python3 -I "$CLAUDE_PROJECT_DIR/.claude/hooks/hooks.py" bash'
+FJ=$(jq -n --arg c 'git push -f origin x' --arg d "$W" '{tool_input:{command:$c},cwd:$d}')
+sh -c "$WR" <<<"$FJ" >/dev/null 2>&1; chk "K1: brak hooks.py -> 0" 0 $?
+mkdir -p "$W/.claude/hooks"; cp "$H" "$W/.claude/hooks/hooks.py"
+sh -c "$WR" <<<"$FJ" >/dev/null 2>&1; chk "K1: hooks.py obecny, force -> 2" 2 $?
 echo "WYNIK: $pass/$tot"; [ "$pass" = "$tot" ]

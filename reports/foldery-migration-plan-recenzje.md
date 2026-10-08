@@ -69,3 +69,40 @@ Załączniki do `reports/foldery-migration-plan.md` (wersja 4.2), wydzielone, ż
 | Zip 20 MB w historii git | Odnotowana | D4, poza migracją |
 
 Wiersze Załączników R i T wymieniające `guard-bash.sh`, `guard-edit.sh`, `turn-baseline.sh`, `stop-check.sh` dotyczą wersji wcześniejszych; ich funkcje są teraz podpoleceniami `hooks.py`.
+
+## Załącznik SK: recenzja sceptyka wersji 4.2 i decyzje
+
+Raport: jeden agent-sceptyk (general-purpose, Opus), test 60/60 powtórzony, 1 sonda `claude -p` (0,053 USD). Poprawki zweryfikowane rozszerzonym testem: 82/82 [MEASURED: `bash test_hooks.sh hooks.py`, 2026-10-08].
+
+| Uwaga | Decyzja | Zmiana |
+|---|---|---|
+| SK1 brak `hooks.py` przy formie exec = exit 2 = blokada każdego Bash/Edit/Write | Przyjęta (krytyczne) | forma powłoki `[ ! -f … ] \|\| exec python3 -I …`; kolejność cp → test → settings; próba U1 w worktree |
+| SK2 brak `origin/main` przepuszcza push na `main` | Przyjęta | blokada przy braku refa lub merge-base |
+| SK3 `BACKLOG.md` zalicza „dokumentację”; CLAUDE-NOWY bez drogi dla obszaru zamrożonego | Przyjęta | wykluczenia w `hooks.py`; CLAUDE-NOWY: jedyne dozwolone użycie „docs: bez zmian” |
+| SK4 push na `main` przez `HEAD`, `@`, nakładki, `$(…)`, `cd`, `-C` | Przyjęta | `strip_wrappers`, `cd`/`-C`, `HEAD`/`@`, blokada refów z `$` |
+| SK5 scalenie i push w jednym wywołaniu = sprawdzany stan sprzed scalenia | Przyjęta | blokada; `/dostawa` w osobnych wywołaniach |
+| SK6 zamrożenie można przeliczyć | Przyjęta | `ZAMROZONE.tsv` tylko usuwanie wierszy; `--zamroz` odmawia; kondensacja bez kodu. „Pozorna kondensacja” (`sed` usuwający `**`) zostaje miękka: recenzent |
+| SK7 `-I` przy `doc_check` może zablokować scalanie | Przyjęta | bez `-I`; pozytywna prowokacja w A6.1 |
+| SK8 odsyłacze w CLAUDE.md do plików z A5/A6.6 | Przyjęta | A5 przed testami i commitem A4; `test_hooks.sh` w A5; usunięcie `MIGRACJA/` przed scaleniem |
+| SK9 PR omija bramki | Przyjęta | `git push --dry-run origin HEAD:main` przed PR (CLAUDE-NOWY, A6.6) |
+| SK10 nagłówek psuje frontmatter reguły | Przyjęta | nagłówek po `---` |
+| SK11 różne formuły sha | Przyjęta | jedna formuła |
+| SK12 `**v4.` nie złapie `**v5.` | Przyjęta | `^\*\*v\d+\.` |
+| SK13 suma timeoutów > 120 s | Przyjęta | `doc_check` 80 s, git 20 s |
+| SK14 „agenci tylko w nowej sesji” niezgodne z O0 §3 | Przyjęta | CLAUDE-NOWY poprawiony |
+| SK15 `--ff-only` zawodzi przy gałęzi i za, i przed | Przyjęta | `session` podpowiada `merge --no-edit` |
+| SK16 nieaktualne odwołania, kolejność punktów `doc_check` | Przyjęta | poprawione |
+| SK17 STATUS przy równoległych sesjach | Przyjęta | CLAUDE-NOWY: jedna sesja ze zmianami naraz albo scalenie obu STATUS |
+
+## Załącznik H-lista: przypadki w `test_hooks.sh`
+
+`bash test_hooks.sh hooks.py` buduje w katalogu tymczasowym repo z atrapą `origin`, `doc_check` (czerwony przy `RED=1`) i workflow, i sprawdza (60 przypadków):
+- 22 przypadki z dawnego Załącznika S (force, `+refspec`, `--mirror`, push na `main` różnymi drogami, `filter-repo`, push gałęzi sesji przy czerwonym `doc_check`);
+- worktree na `main` przy czerwonym `doc_check` → blokada; główna kopia na gałęzi sesji → przechodzi (S4);
+- reguły różnicy (U1): kod bez CHANGELOG/dokumentacji → blokada; z CHANGELOG bez dokumentacji → blokada; z „docs: bez zmian (powód)” → przechodzi; bez STATUS → blokada; komplet → przechodzi;
+- workflow (U6): `push:` dopisane `sed`-em na dysku → blokada pushu gałęzi; `on: [push, workflow_dispatch]` w HEAD → blokada; 6 przypadków parsera (`on: push`, `"on":` blokowo, inline `{…}`, lista `-`, komentarz);
+- `edit`: zapis w `backup/` → blokada; Edit dodający `push:` → blokada; zmiana `inputs` → przechodzi; Write z `schedule` → blokada;
+- `turn`/`stop`: cisza bez zmian, przypomnienie po zmianie, cisza z listą „Zmiany…”, cisza przy `stop_hook_active`, przypomnienie po ponownej edycji;
+- recenzja sceptyka (22 przypadki): push na `main` przez `HEAD`, `@`, `timeout`, `env`, `command`, nawias, `if`, `$(…)`, `cd` do worktree; force przez `nice`/`timeout`; push na `main` razem z `fetch` w jednym wywołaniu; `BACKLOG.md` nie liczy się jako dokumentacja; brak `origin/main`; `ZAMROZONE.tsv`: dopisany wiersz → blokada, usunięty wiersz z kondensacją → przechodzi, kondensacja razem z kodem → blokada; forma powłoki: brak `hooks.py` → 0, obecny + force → 2;
+- `session`, `subagent`; zły JSON i zły katalog → kod 0; kopia `hooks.py` z CRLF działa (blokuje force, `turn` → 0).
+

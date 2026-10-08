@@ -329,7 +329,7 @@ Uwagi do tabeli:
 
 **Z28. Trwałość: strażnik patrzy na zmiany, nie tylko na pliki.**
 - Reguła: przy pushu na gałąź główną hook liczy różnicę gałęzi względem `origin/main` i wymaga: zmienionego pliku stanu (STATUS) w każdej gałęzi ze zmianami; przy zmianie kodu także CHANGELOG i pliku dokumentacji, albo jawnej linii „docs: bez zmian (powód)”. Strażnik w testach widzi tylko bieżące pliki, więc nie wykryje, że dokumentacja nie nadąża za kodem.
-- Dowód: w planie Foldery 4.1 jedyne twarde warunki dotyczyły napisów wersji, rozmiarów i odsyłaczy [SOURCE: plan 4.1 A4.5]; implementacja i test: `reports/foldery-hooks/` [MEASURED: 60/60, 2026-10-08].
+- Dowód: w planie Foldery 4.1 jedyne twarde warunki dotyczyły napisów wersji, rozmiarów i odsyłaczy [SOURCE: plan 4.1 A4.5]; implementacja i test: `reports/foldery-hooks/` [MEASURED: 82/82, 2026-10-08].
 - Granica: furtka „bez zmian” jest zapisem, nie oceną; treść ocenia tylko recenzent (miękkie).
 
 **Z29. Pliki przeniesione dosłownie zamrażaj do kondensacji.**

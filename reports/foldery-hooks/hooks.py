@@ -8,7 +8,7 @@ def run(args, cwd=None, timeout=60):
     return subprocess.run(args, cwd=cwd, capture_output=True, text=True, timeout=timeout)
 
 
-def git(top, *a, timeout=60):
+def git(top, *a, timeout=20):
     return run(["git", "-C", top, *a], timeout=timeout)
 
 
@@ -84,9 +84,19 @@ def wf_problems(top):
     return out
 
 
+DOC_EXCLUDED = ("GaleriaFolderow/dokumentacja/BACKLOG.md", "GaleriaFolderow/dokumentacja/ZASADY-UZYTKOWNIKA.md",
+                "GaleriaFolderow/dokumentacja/migracja/")
+FROZEN = "GaleriaFolderow/dokumentacja/migracja/ZAMROZONE.tsv"
+
+
 def diff_problems(top):
     rng = "origin/main...HEAD"
-    names = git(top, "diff", "--name-only", rng).stdout.split()
+    if git(top, "rev-parse", "--verify", "-q", "origin/main").returncode != 0:
+        return ["brak origin/main: najpierw git fetch origin main"]
+    d = git(top, "diff", "--name-only", rng)
+    if d.returncode != 0:
+        return ["nie da się policzyć różnicy z origin/main (brak merge-base?): git fetch --unshallow origin main"]
+    names = d.stdout.split()
     if not names:
         return []
     p = []
@@ -95,12 +105,21 @@ def diff_problems(top):
     if "GaleriaFolderow/galeria.py" in names:
         if "GaleriaFolderow/CHANGELOG.md" not in names:
             p.append("zmiana galeria.py bez wpisu w GaleriaFolderow/CHANGELOG.md")
-        docs = any(n.startswith(("GaleriaFolderow/dokumentacja/", ".claude/rules/")) for n in names)
+        docs = any(n.startswith(("GaleriaFolderow/dokumentacja/", ".claude/rules/")) and not n.startswith(DOC_EXCLUDED)
+                   for n in names)
         if not docs:
             added = git(top, "diff", rng, "--", "GaleriaFolderow/CHANGELOG.md").stdout
             if not re.search(r"^\+.*docs: bez zmian \(.+\)", added, re.M):
                 p.append("zmiana galeria.py bez zmiany w GaleriaFolderow/dokumentacja/ ani .claude/rules/; "
                          "jeśli celowo: linia 'docs: bez zmian (powód)' w CHANGELOG.md")
+    if git(top, "cat-file", "-e", f"origin/main:{FROZEN}").returncode == 0:
+        if FROZEN in names:
+            fd = git(top, "diff", rng, "--", FROZEN).stdout
+            if re.search(r"^\+(?!\+\+)", fd, re.M):
+                p.append(f"{FROZEN}: wolno tylko usuwać wiersze (zamrożenie nie może być przeliczane)")
+        frozen = {ln.split("\t")[0] for ln in git(top, "show", f"origin/main:{FROZEN}").stdout.splitlines() if ln.strip()}
+        if "GaleriaFolderow/galeria.py" in names and frozen & set(names):
+            p.append("kondensacja pliku zamrożonego i zmiana galeria.py w jednej gałęzi: kondensacja to osobna gałąź bez kodu")
     return p
 
 
@@ -117,22 +136,64 @@ def segments(s):
             else:
                 seg.append(t)
     except ValueError:
-        yield s.split()
+        for line in s.splitlines():
+            try:
+                yield from segments_line(line)
+            except ValueError:
+                yield line.split()
         return
     if seg:
         yield seg
 
 
-def git_sub(seg):
+def segments_line(line):
+    lx = shlex.shlex(line, posix=True, punctuation_chars=";&|")
+    lx.whitespace_split = True
+    seg = []
+    for t in lx:
+        if t and set(t) <= set(";&|"):
+            if seg:
+                yield seg
+            seg = []
+        else:
+            seg.append(t)
+    if seg:
+        yield seg
+
+
+WRAP = {"command", "exec", "time", "nohup", "!", "if", "then", "elif", "else", "do", "while", "until", "builtin"}
+
+
+def strip_wrappers(seg):
+    seg = [t.lstrip("({").rstrip(")}") for t in seg]
+    seg = [t for t in seg if t]
     i = 0
-    while i < len(seg) and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", seg[i]):
-        i += 1
-    if i >= len(seg) or os.path.basename(seg[i]) != "git":
-        return None, []
-    i += 1
+    while i < len(seg):
+        t = seg[i]
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", t) or t in WRAP:
+            i += 1
+        elif t in ("env", "nice", "timeout", "stdbuf", "ionice", "sudo"):
+            i += 1
+            while i < len(seg) and (seg[i].startswith("-") or re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", seg[i])):
+                i += 2 if seg[i] in ("-n", "-k", "-s", "-u", "-c") else 1
+            if t == "timeout" and i < len(seg) and re.match(r"^\d+(\.\d+)?[smhd]?$", seg[i]):
+                i += 1
+        else:
+            break
+    return seg[i:]
+
+
+def git_sub(seg):
+    seg = strip_wrappers(seg)
+    cdir = None
+    if not seg or os.path.basename(seg[0]) != "git":
+        return None, [], None
+    i = 1
     while i < len(seg) and seg[i].startswith("-"):
+        if seg[i] == "-C" and i + 1 < len(seg):
+            cdir = seg[i + 1]
         i += 2 if seg[i] in ("-C", "-c", "--git-dir", "--work-tree", "--namespace") else 1
-    return (seg[i], seg[i + 1:]) if i < len(seg) else (None, [])
+    return (seg[i], seg[i + 1:], cdir) if i < len(seg) else (None, [], cdir)
 
 
 def h_bash(d):
@@ -141,9 +202,16 @@ def h_bash(d):
         return
     cwd = d.get("cwd") or PROJ
     try:
-        to_main_ctx = any_push = need_main = False
+        to_main_ctx = any_push = need_main = other_git = False
+        push_dir = cwd
         for seg in segments(cmd):
-            sub, args = git_sub(seg)
+            s2 = strip_wrappers(seg)
+            if s2 and s2[0] == "cd" and len(s2) > 1:
+                cwd = os.path.join(cwd, os.path.expanduser(s2[1]))
+                continue
+            sub, args, cdir = git_sub(seg)
+            if sub in ("checkout", "switch", "merge", "pull", "rebase", "reset", "commit", "cherry-pick", "am", "fetch"):
+                other_git = True
             if sub in ("checkout", "switch") and "main" in args:
                 to_main_ctx = True
             if sub in ("filter-branch", "filter-repo"):
@@ -156,24 +224,32 @@ def h_bash(d):
             if any(o.startswith(("--force", "--mirror")) or re.match(r"^-[a-zA-Z]*f", o) for o in opts) \
                     or any(x.startswith("+") for x in pos[1:]):
                 block("BLOKADA: force-push zabroniony (reguła scalania użytkownika)")
+            here = os.path.join(cwd, cdir) if cdir else cwd
+            push_dir = here
             refs = pos[1:]
+            if any("$" in r or "`" in r for r in refs):
+                block("BLOKADA: podaj nazwę gałęzi wprost (bez $(...) i zmiennych), strażnik musi ją znać")
+            cur = git(here, "branch", "--show-current").stdout.strip()
             dst_main = any(re.search(r"(^|:)(refs/heads/)?main$", r) for r in refs) or "--all" in opts
+            dst_main = dst_main or any(r.split(":")[-1] in ("HEAD", "@") and (cur == "main" or to_main_ctx) for r in refs)
             if not refs:
-                cur = git(cwd, "branch", "--show-current").stdout.strip()
                 dst_main = dst_main or cur == "main" or to_main_ctx
             need_main = need_main or dst_main
         if not any_push:
             return
-        top = top_of(cwd)
+        top = top_of(push_dir)
         wf = wf_problems(top)
         if wf:
             block("BLOKADA push: workflow CI może mieć tylko wyzwalacz workflow_dispatch "
                   "(limit minut Actions, reguła właściciela):\n" + "\n".join(wf))
         if need_main:
+            if other_git or to_main_ctx:
+                block("BLOKADA: push na main musi być osobnym wywołaniem Bash (strażnik sprawdza stan przed "
+                      "wykonaniem polecenia). Najpierw fetch/checkout/merge, potem samo: git push origin main")
             p = diff_problems(top)
             if p:
                 block("BLOKADA push na main: brak aktualizacji dokumentacji:\n- " + "\n- ".join(p))
-            r = run([sys.executable, "-I", "tools/doc_check.py"], cwd=os.path.join(top, "GaleriaFolderow"), timeout=110)
+            r = run([sys.executable, "tools/doc_check.py"], cwd=os.path.join(top, "GaleriaFolderow"), timeout=80)
             if r.returncode != 0:
                 block("BLOKADA push na main: doc_check czerwony - najpierw dokumentacja:\n" + r.stdout + r.stderr)
     except SystemExit:
@@ -261,7 +337,8 @@ def h_session(d):
     ahead = git(PROJ, "rev-list", "--count", "origin/main..HEAD").stdout.strip() or "?"
     lines.append(f"Foldery: APP_VERSION {ver} · gałąź {br} · za origin/main: {behind} · niescalone z main: {ahead}")
     if behind not in ("0", "?"):
-        lines.append("NAJPIERW: git fetch origin main && git merge --ff-only origin/main")
+        lines.append("NAJPIERW: git merge --ff-only origin/main" if ahead == "0"
+                     else "NAJPIERW: git merge --no-edit origin/main (gałąź ma własne commity)")
     if ahead not in ("0", "?") and d.get("source") != "startup":
         lines.append("Gałąź ma commity nie scalone z main: przed końcem pracy /dostawa (scalenie).")
     try:

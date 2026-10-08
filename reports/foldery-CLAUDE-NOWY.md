@@ -19,6 +19,8 @@ All paths in backticks are relative to the repository root.
 - Merge rule: at the end of every piece of work, commit + push the session branch, then merge it into `main` and push
   `main` (steps in `/dostawa`). Never force-push, never rewrite history. If you cannot merge (refused push or the auto
   mode classifier refuses a change to `CLAUDE.md` / `.claude/`), push the branch, open a PR and tell the owner at once.
+  Before a PR run `git push --dry-run origin HEAD:main`: same hook gate, nothing is sent. Merge (fetch, checkout,
+  merge) and `git push origin main` are separate Bash calls; the hook refuses them combined.
 - New owner rule: current wording into this file, original wording with date appended at the end of
   `GaleriaFolderow/dokumentacja/ZASADY-UZYTKOWNIKA.md`.
 - New code has no comments. Polish UI strings keep diacritics.
@@ -51,6 +53,7 @@ All paths in backticks are relative to the repository root.
 - Never run GUI tests in parallel with each other or with a heavy agent.
 
 ## Documentation (same session as the change)
+- One session with changes at a time; if two ran in parallel, merge both STATUS texts by hand.
 - Every session that changed anything overwrites `GaleriaFolderow/STATUS.md` (≤ 6 KB): version, last session (branch,
   date), done, next task, decisions waiting for the owner, condensation queue, deferred areas. Open items live only in
   `GaleriaFolderow/dokumentacja/BACKLOG.md`; STATUS links to it.
@@ -62,8 +65,9 @@ All paths in backticks are relative to the repository root.
   verbatim and are not condensed yet. Do not edit them (`doc_check` fails). Record your change in CHANGELOG.md and in
   STATUS („obszar X: zmiany od vY w CHANGELOG, do kondensacji”). Rewriting one is a separate session: `/kondensacja <file>`.
 - Push to `main` is blocked unless the branch changed STATUS.md and, when galeria.py changed, also CHANGELOG.md and a
-  file in `GaleriaFolderow/dokumentacja/` or `.claude/rules/`. If no doc needs a change, add a CHANGELOG line
-  „docs: bez zmian (reason)”. Never use that line to skip a doc that should change.
+  file in `GaleriaFolderow/dokumentacja/` or `.claude/rules/` (BACKLOG, ZASADY-UZYTKOWNIKA and `migracja/` do not count).
+  The CHANGELOG line „docs: bez zmian (reason)” is allowed only when the area file is frozen („obszar X zamrożony”,
+  plus the STATUS entry) or the change really needs no doc. Never use it to skip a doc that should change.
 - New area → new file with „stan: skondensowany” + a row in MAPA §1 with its size in KB.
 - AI features are documented only in `GaleriaFolderow/dokumentacja/ai/` (owner rule).
 
@@ -96,5 +100,6 @@ All paths in backticks are relative to the repository root.
 - Hooks run `python3` in the cloud VM. They do not cover a push from inside your own script; do not try.
 - When changes take effect: hooks and `.claude/settings.json` at once, after saving (a broken hook breaks this session
   immediately: first test a scratch copy with `GaleriaFolderow/tools/test_hooks.sh`, then save it);
-  this file and agents only in a NEW session. The auto mode classifier may refuse edits of this file or `.claude/`, or
+  this file only in a NEW session; agent definitions after a few seconds, but a NEW session if `.claude/agents/`
+  was created during this session. The auto mode classifier may refuse edits of this file or `.claude/`, or
   their merge → leave them in a branch/PR for the owner.

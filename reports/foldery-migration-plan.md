@@ -1,6 +1,6 @@
 # Plan migracji systemu dokumentacji Foldery
 
-Wersja: **4.2** (trwałość po migracji: przegląd U1–U10; hooki w jednym pliku Pythona `foldery-hooks/hooks.py` z testem 60/60, Załącznik H; wcześniej: recenzje „meta” M1–M15, N1–N8, techniczna T1–T13, S4/S5; decyzje: `foldery-migration-plan-recenzje.md`) · 2026-10-08 · podstawa: `reports/foldery-analysis.md` (dalej „Raport”), Foldery `main` @ `be31a48`.
+Wersja: **4.2** (trwałość po migracji: przegląd U1–U10; hooki w jednym pliku Pythona `foldery-hooks/hooks.py` z testem 82/82, Załącznik H; recenzja sceptyka SK1–SK17; wcześniej: recenzje „meta” M1–M15, N1–N8, techniczna T1–T13, S4/S5; decyzje: `foldery-migration-plan-recenzje.md`) · 2026-10-08 · podstawa: `reports/foldery-analysis.md` (dalej „Raport”), Foldery `main` @ `be31a48`.
 Słowniczek pojęć: Raport, początek pliku.
 
 ## 0. Idea w trzech zdaniach
@@ -21,7 +21,7 @@ Słowniczek pojęć: Raport, początek pliku.
 | K5 | Blokowane przez program: force-push, push na `main` przy czerwonym `doc_check`, trigger `push:` w CI, edycja `backup/`, zapis plików przez narzędzia GitHub MCP | prowokacje A6 (`--dry-run`) | 0 blokad |
 | K6 | `./tools/testy.sh` zielone (poza znanym czerwonym „v4.18.5: siatka gruba i mocna”) | testy | zielone |
 | K7 | Test mutacyjny `doc_check` w `test_logic` przechodzi na nowym układzie | `test_logic` | jest, na starym |
-| K8 | Trwałość: push na `main` bez zmiany STATUS.md albo ze zmianą kodu bez CHANGELOG/dokumentacji jest blokowany; zmiana pliku zamrożonego daje czerwony `doc_check`; wyzwalacz CI inny niż `workflow_dispatch` blokuje **każdy** push | `bash test_hooks.sh` (60/60) + prowokacje A6 | 0 |
+| K8 | Trwałość: push na `main` bez zmiany STATUS.md albo ze zmianą kodu bez CHANGELOG/dokumentacji jest blokowany; zmiana pliku zamrożonego daje czerwony `doc_check`; wyzwalacz CI inny niż `workflow_dispatch` blokuje **każdy** push | `bash test_hooks.sh` (82/82) + prowokacje A6 | 0 |
 
 ## 2. Decyzje właściciela przed startem
 
@@ -94,7 +94,7 @@ Reguła `.claude/rules/testy.md` (szkic w Raporcie §5) **nie powstaje** w etapi
 
 ### A3. Przeniesienie i dowód bezstratności
 1. Kopiowanie **tylko skryptem** (`sed -n 'a,bp'` / Python według KONKORDANCJA.tsv), nigdy przepisywaniem przez model (M9).
-2. Każdy plik docelowy dostaje 3-liniowy nagłówek: obszar, „przeniesione dosłownie z CLAUDE.md v4.37.9; akapity od najnowszego, nowszy zastępuje starszy; **plik zamrożony: nie dopisuj, zmiana tylko przez kondensację (`/kondensacja`)**; **przy sprzeczności obowiązują `/CLAUDE.md` i skill `/dostawa`**” (T10: pliki dosłowne zawierają nieaktualne polecenia, np. „always re-add CLAUDE.md to the zip”, „§4 new paragraph at the TOP”).
+2. Każdy plik docelowy dostaje 3-liniowy nagłówek (w pliku reguły `galeria-niezmienniki.md` **po** zamykającym `---` frontmattera, bo frontmatter musi zostać w linii 1, SK10): obszar, „przeniesione dosłownie z CLAUDE.md v4.37.9; akapity od najnowszego, nowszy zastępuje starszy; **plik zamrożony: nie dopisuj, zmiana tylko przez kondensację (`/kondensacja`)**; **przy sprzeczności obowiązują `/CLAUDE.md` i skill `/dostawa`**” (T10: pliki dosłowne zawierają nieaktualne polecenia, np. „always re-add CLAUDE.md to the zip”, „§4 new paragraph at the TOP”).
 3. **Skrypt konkordancji** (`/MIGRACJA/konkordancja.py`, **commitowany**, bo scratchpad ginie przy odzyskaniu maszyny, T9b):
    - zakresy w KONKORDANCJA.tsv pokrywają linie 1–4711 archiwum dokładnie, bez luk i nakładek (T9a);
    - multizbiór linii archiwum (bez linii-nagłówków `## N.`) = suma multizbiorów linii przeniesionych do plików docelowych plus linie oznaczone w KONKORDANCJA.tsv jako „tylko archiwum” (nagłówek l. 1–14), bez dodanych nagłówków i bez nowej treści CLAUDE.md;
@@ -103,7 +103,9 @@ Reguła `.claude/rules/testy.md` (szkic w Raporcie §5) **nie powstaje** w etapi
    - **uruchamiany na commicie zrobionym zaraz po A3.2, zanim A3.4/A4 zmienią przeniesione linie (N2)**; SHA tego commita i wynik zapisz w POSTEP.md; późniejsze sprawdzenia (A6.4, recenzent) liczą konkordancję względem tego SHA (`git show <sha>:<plik>`), a nie względem bieżących plików.
 4. Kontrola § (M6): `grep -rn '§[0-9]' GaleriaFolderow .claude CLAUDE.md` (z pominięciem `dokumentacja/ZASADY-UZYTKOWNIKA.md`, który zostaje w brzmieniu oryginalnym; do jego nagłówka dopisać legendę „stary § → nowy plik” z KONKORDANCJA.tsv) → każde odwołanie do starych sekcji zamienić na ścieżkę pliku (np. „CLAUDE.md §6” → „`.claude/rules/galeria-niezmienniki.md`”). Odwołania „§5.N” zostają, bo numery są stabilne; do nich dopisać plik `spec/SPEC-A|B.md`. Odwołania w testach z listy A0.4 też poprawić.
 
-### A4. Nowe pliki nawigacji i strażnik (w **jednym commicie**)
+### A4. Nowe pliki nawigacji i strażnik (w **jednym commicie** razem z plikami z A5)
+Kolejność (SK8): A4.1–A4.6 i A4.7 przygotowane → **A5** (pliki `.claude/`, `test_hooks.sh`) → A4.8 testy → jeden commit. `/CLAUDE.md` odsyła do plików z A5, więc bez nich `doc_check` pkt 4 byłby czerwony.
+
 1. **`/CLAUDE.md`**: gotowy plik leży w `MIGRACJA/CLAUDE-NOWY.md` (przygotowany poza sesją, uwzględnia wszystkie poprawki planu). Przenieś go `git mv MIGRACJA/CLAUDE-NOWY.md CLAUDE.md` i popraw tylko ścieżki, które w A2 wyszły inaczej (np. nazwy plików obszarów). Zawiera:
    - zasady użytkownika: aktualne brzmienie, krótko, z odsyłaczem do `dokumentacja/ZASADY-UZYTKOWNIKA.md` (A2, N1);
    - protokół weryfikacji (A2, §3);
@@ -145,18 +147,18 @@ Reguła `.claude/rules/testy.md` (szkic w Raporcie §5) **nie powstaje** w etapi
       - każdy `dokumentacja/**/*.md` ≤ 40 000 (poza `migracja/`).
    3. Adnotacje „(N KB)” w MAPA §1 w pełnych KB, zgodne z rzeczywistym rozmiarem z tolerancją max(10%, 1 KB) (N7).
    4. Martwe odsyłacze: ścieżki w backtickach z końcówką `.md|.py|.sh|.bat|.txt|.tsv|.yml` istnieją. Baza jest stała (U7): w `../CLAUDE.md` **korzeń repo** (np. `GaleriaFolderow/tools/doc_check.py`, `.claude/agents/recenzent.md`); w MAPA §1 katalog `GaleriaFolderow/`. Za ścieżkę uznaje się całą zawartość pary backticków w jednej linii, bez spacji, `*`, `<` i `@` (to wzorce, polecenia i przykłady). Zawartość backticków w CLAUDE.md nie może zawierać znaku backtick (U7: podwójne backticki rozjeżdżają parowanie).
-   11. Pliki zamrożone (U2): dla każdego wiersza `GaleriaFolderow/dokumentacja/migracja/ZAMROZONE.tsv` (`ścieżka	sha256`, ścieżki od korzenia repo) plik musi istnieć i albo mieć sha256 równy zapisanemu, albo mieć w pierwszych 10 liniach „stan: skondensowany” (wtedy jest już normalnym plikiem). Komunikat błędu: „plik zamrożony X zmieniony bez kondensacji: cofnij zmianę (`git checkout origin/main -- X`), zapisz ją w CHANGELOG + STATUS albo uruchom `/kondensacja X`”. Wypisuje (bez błędu) liczbę plików jeszcze zamrożonych.
-   12. `../CLAUDE.md` nie zawiera adnotacji rozmiaru `(N KB)` ani `(Nk tok.)`: rozmiary są tylko w MAPA §1, gdzie pilnuje ich pkt 3 (U7).
    5. `GaleriaFolderow/CLAUDE.md` nie istnieje albo ma ≤ 2 000 B (zakaz powrotu wielkiego pliku).
    6. `../.github/workflows/*.yml`: klucze pod `on:` (forma blokowa i inline, np. `on: push`, `on: [push, workflow_dispatch]`) to **wyłącznie** `workflow_dispatch` (lista dozwolonych, nie zakazanych: łapie też `schedule`, `workflow_run`, `pull_request_target`, T8). Wszystkie odczyty przez `read(<dokładna ścieżka względna>)`, a katalogi listuje `os` (wzorzec testu mutacyjnego).
-   7. Pliki z nagłówkiem „stan: skondensowany” (etap B) nie zawierają lead-inów `**v4.` (M7c).
+   7. Pliki z nagłówkiem „stan: skondensowany” (etap B) nie zawierają lead-inów wersji (wzorzec `^\*\*v\d+\.`, nie tylko `**v4.`, SK12; M7c).
    8. Każdy plik `dokumentacja/architektura/*.md` i `dokumentacja/spec/*.md`, którego nie ma w `ZAMROZONE.tsv` (czyli nowy po migracji), musi mieć nagłówek „stan: skondensowany” (N8).
-   10. Żaden plik w `../.claude/hooks/` nie zawiera znaku `\r` (CRLF; dla Pythona to higiena, nie awaria), a definicje `../.claude/agents/*.md` i `../.claude/skills/*/SKILL.md` mają `---` w linii 1 oraz pole `name` (agenci) i `description`. Literówka w polu jest ignorowana bez komunikatu, a plik bez `name` jest pomijany (O0 §4, O2 §B1).
    9. `../.claude/rules/galeria-niezmienniki.md` zaczyna się od `---` w linii 1, zawiera `paths:` z `GaleriaFolderow/galeria.py` i zamykające `---`. Zepsuty YAML sprawiłby, że reguła (~15k tok.) ładowałaby się w każdej sesji na starcie [SOURCE: CC memory.md, „Rule frontmatter reference”] (N6).
+   10. Żaden plik w `../.claude/hooks/` nie zawiera znaku `\r` (CRLF; dla Pythona to higiena, nie awaria), a definicje `../.claude/agents/*.md` i `../.claude/skills/*/SKILL.md` mają `---` w linii 1 oraz pole `name` (agenci) i `description`. Literówka w polu jest ignorowana bez komunikatu, a plik bez `name` jest pomijany (O0 §4, O2 §B1).
+   11. Pliki zamrożone (U2): dla każdego wiersza `GaleriaFolderow/dokumentacja/migracja/ZAMROZONE.tsv` (`ścieżka	sha256`, ścieżki od korzenia repo) plik musi istnieć i albo mieć sha256 równy zapisanemu, albo mieć w pierwszych 10 liniach „stan: skondensowany” (wtedy jest już normalnym plikiem). Komunikat błędu: „plik zamrożony X zmieniony bez kondensacji: cofnij zmianę (`git checkout origin/main -- X`), zapisz ją w CHANGELOG + STATUS albo uruchom `/kondensacja X`”. Wypisuje (bez błędu) liczbę plików jeszcze zamrożonych. Sha liczone **jedną formułą** w `doc_check` i w `konkordancja.py --zamroz`: `sha256(read(p).encode("utf-8"))` (SK11). Pkt 11 szuka nagłówka w pierwszych 10 liniach licząc frontmatter (SK10).
+   12. `../CLAUDE.md` nie zawiera adnotacji rozmiaru `(N KB)` ani `(Nk tok.)`: rozmiary są tylko w MAPA §1, gdzie pilnuje ich pkt 3 (U7).
 6. **`tests/test_logic.py`**, blok „v47+ dokumentacja” (~l. 10433–10454):
    - mutacja wersji 9.99.9 musi dać komunikaty z `CHANGELOG`, `STATUS`, `README` (`len ≥ 3`);
    - nowe mutacje: fałszywy `../CLAUDE.md` 12 000 B → błąd limitu; MAPA §1 z nieistniejącą ścieżką → błąd odsyłacza; workflow z `push:` → błąd CI; jeden bajt dopisany do pliku zamrożonego → błąd pkt 11; ten sam plik z nagłówkiem „stan: skondensowany” → bez błędu; `(28 KB)` w `../CLAUDE.md` → błąd pkt 12.
-7. **`ZAMROZONE.tsv`** (ostatni krok A4, po A3.4 i po nagłówkach): `konkordancja.py --zamroz` zapisuje sha256 wszystkich plików przeniesionych dosłownie, czyli `architektura/*`, `spec/*`, `OGRANICZENIA.md`, `PLIKI.md`, `SRODOWISKO-TESTY.md`, `.claude/rules/galeria-niezmienniki.md`, części `ai/USUWANIE-OBIEKTOW-*.md`. **Nie zamrażać**: `ZASADY-UZYTKOWNIKA.md` (dziennik oryginalnych brzmień reguł: nowa reguła właściciela = obowiązujące brzmienie w `/CLAUDE.md` + oryginał z datą dopisany na końcu), `BACKLOG.md` (żywa lista), `CHANGELOG.md`, `ai/README.md`, MAPA, EFFORT-ZASADY, README.txt.
+7. **`ZAMROZONE.tsv`** (ostatni krok A4, po A3.4 i po nagłówkach): `konkordancja.py --zamroz` odmawia, gdy plik już istnieje (wyjątek: w sesji migracji po poprawkach recenzenta A6.4, z opcją `--nadpisz`; SK6), i zapisuje sha256 wszystkich plików przeniesionych dosłownie, czyli `architektura/*`, `spec/*`, `OGRANICZENIA.md`, `PLIKI.md`, `SRODOWISKO-TESTY.md`, `.claude/rules/galeria-niezmienniki.md`, części `ai/USUWANIE-OBIEKTOW-*.md`. **Nie zamrażać**: `ZASADY-UZYTKOWNIKA.md` (dziennik oryginalnych brzmień reguł: nowa reguła właściciela = obowiązujące brzmienie w `/CLAUDE.md` + oryginał z datą dopisany na końcu), `BACKLOG.md` (żywa lista), `CHANGELOG.md`, `ai/README.md`, MAPA, EFFORT-ZASADY, README.txt.
    
    Test `ast`/źródeł zakazujących napisów sprawdzić grep-em przed zmianą komunikatów (MAPA §7).
 8. `./tools/testy.sh logic` zielone (+ pełne `testy.sh` przed A6).
@@ -164,7 +166,9 @@ Reguła `.claude/rules/testy.md` (szkic w Raporcie §5) **nie powstaje** w etapi
 ### A5. Hooki, ustawienia, agenci, skille
 Szkice hooków z Raportu §6 są **nieaktualne**. Obowiązuje Załącznik H: jeden plik `hooks.py` z podpoleceniami, kopiowany dosłownie (`cp MIGRACJA/hooks/hooks.py .claude/hooks/hooks.py`), nigdy przepisywany przez model.
 
-**Wywołanie hooków (T2, U5):** zawsze `"command": "python3", "args": ["-I", "${CLAUDE_PROJECT_DIR}/.claude/hooks/hooks.py", "<podpolecenie>"]`. Exec form podstawia `${CLAUDE_PROJECT_DIR}` w `args` [SOURCE: CC hooks part2 „Exec form and shell form”]. Bit wykonywalności nie jest potrzebny, a CRLF Pythonowi nie szkodzi.
+**Wywołanie hooków (T2, U5, SK1):** forma powłoki ze sprawdzeniem istnienia pliku, bez `args`:
+`"command": "[ ! -f \"$CLAUDE_PROJECT_DIR/.claude/hooks/hooks.py\" ] || exec python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/hooks.py\" <podpolecenie>"`.
+Powód: `python3` z nieistniejącym plikiem kończy się kodem 2, co w PreToolUse blokuje **każde** Bash, Edit i Write, także naprawę [MEASURED: sceptyk, `claude -p` z hookiem bez pliku → „hook error … echo never executed”, n=1]. Do braku pliku dochodzi np. przy `git checkout` commita sprzed migracji albo wycofaniu (§7). Z warunkiem brak pliku = kod 0 (test SK1 w `test_hooks.sh`). Bit wykonywalności nie jest potrzebny, a CRLF Pythonowi nie szkodzi. **Kolejność:** `cp hooks.py` → `test_hooks.sh` → dopiero wpis w `settings.json`.
 
 **`.claude/settings.json` → `permissions.deny`:**
 - `Bash(git push --force*)`, `Bash(git push -f*)`, `Bash(git push * --force*)`, `Bash(git push * -f*)`: pierwsza warstwa; właściwą robotę robi `hooks.py bash`;
@@ -181,10 +185,10 @@ Szkice hooków z Raportu §6 są **nieaktualne**. Obowiązuje Załącznik H: jed
 - Stop → `stop` (`timeout: 60`).
 
 **Co robi `hooks.py`** (szczegóły i lista przypadków: Załącznik H):
-- `bash`: tokenizacja `shlex` per podpolecenie (T1); force-push, `--mirror`, `+refspec`, `filter-branch/-repo` → blokada; przy **każdym** `git push` sprawdza wyzwalacze workflow na dysku i w HEAD (tylko `workflow_dispatch`, U6); przy pushu na `main` dodatkowo reguły różnicy gałęzi względem `origin/main` (U1: STATUS.md zmieniony; przy zmianie `galeria.py` także CHANGELOG.md oraz `dokumentacja/` lub `.claude/rules/`, albo linia „docs: bez zmian (powód)” w CHANGELOG) i zielony `doc_check`; stan repo z `cwd` wejścia (S4); push gałęzi sesji przechodzi zawsze, jeśli workflow są poprawne; błąd samego strażnika przy `git push` → blokada z komunikatem (fail-closed), przy innych poleceniach strażnik się nie uruchamia;
+- `bash`: tokenizacja `shlex` per podpolecenie (T1), zdejmuje nakładki (`timeout`, `nice`, `env`, `command`, `if`, nawiasy itd.), śledzi `cd` i `git -C` (SK4); `HEAD`/`@` na gałęzi `main` = push na `main`; ref z `$` albo backtickiem → blokada „podaj gałąź wprost”; force-push, `--mirror`, `+refspec`, `filter-branch/-repo` → blokada; przy **każdym** `git push` sprawdza wyzwalacze workflow na dysku i w HEAD (tylko `workflow_dispatch`, U6); przy pushu na `main` dodatkowo reguły różnicy gałęzi względem `origin/main` (U1: STATUS.md zmieniony; przy zmianie `galeria.py` także CHANGELOG.md oraz `dokumentacja/` lub `.claude/rules/`, albo linia „docs: bez zmian (powód)” w CHANGELOG) i zielony `doc_check` (uruchamiany bez `-I`, limit 80 s, SK7, SK13); push na `main` w tym samym wywołaniu co `fetch`/`checkout`/`merge`/`commit` → blokada, bo hook widzi stan sprzed polecenia (SK5: scalanie i push to osobne wywołania, także w `/dostawa`); brak `origin/main` albo merge-base → blokada (SK2); `BACKLOG.md`, `ZASADY-UZYTKOWNIKA.md`, `migracja/` nie liczą się jako dokumentacja (SK3); gdy `origin/main` ma `ZAMROZONE.tsv`: wolno w nim tylko usuwać wiersze, a kondensacja i zmiana `galeria.py` w jednej gałęzi → blokada (SK6); stan repo z `cwd` wejścia (S4); push gałęzi sesji przechodzi zawsze, jeśli workflow są poprawne; błąd samego strażnika przy `git push` → blokada z komunikatem (fail-closed), przy innych poleceniach strażnik się nie uruchamia;
 - `edit`: zapis do `/GaleriaFolderow/backup/` → blokada; zapis workflow → strażnik składa plik wynikowy (Write: `content`; Edit: bieżący plik z zamianą `old_string`→`new_string`) i sprawdza wyzwalacze (T8);
 - `turn` / `stop`: stan tury = HEAD + `git status -z` + rozmiar i `mtime_ns` każdego zmienionego pliku (wykrywa ponowną edycję, T5; tańsze niż `git diff --binary` przy zipie 20 MB); `turn` milczy (N5); `stop` przy zmianie bez „Zmiany w tej odpowiedzi” zwraca `additionalContext`, co kontynuuje turę z limitem 8 [SOURCE: CC hooks part7 „Stop decision control”];
-- `session`: APP_VERSION, gałąź, za/przed `origin/main`, 40 linii STATUS.md;
+- `session`: APP_VERSION, gałąź, za/przed `origin/main` (gdy gałąź jest i za, i przed: `git merge --no-edit origin/main`, SK15), 40 linii STATUS.md;
 - `subagent`: treść `.claude/agent-rules.md` jako `additionalContext`;
 - `turn`, `stop`, `session`, `subagent` **zawsze kończą się kodem 0**, także przy złym JSON-ie i błędzie (U5).
 
@@ -193,12 +197,12 @@ Szkice hooków z Raportu §6 są **nieaktualne**. Obowiązuje Załącznik H: jed
 **Agenci i skille:**
 - `.claude/agents/recenzent.md` (Read, Grep, Glob; `model: opus`, `effort: high`);
 - `.claude/agents/wykonawca.md` (`isolation: worktree`, `disallowedTools: Agent`, `model: opus`, `effort: high`, w treści: „przed uruchomieniem wykonawców: commit + push + scalenie albo `worktree.baseRef: "head"`”);
-- `.claude/skills/dostawa/SKILL.md` = dawna MAPA §3 jako kroki (źródło jedyne, M12; oryginał w `/archiwum/MAPA-do-v4.37.9.md`). Gdyby `cp` do `backup/` było blokowane (prowokacja A6), backup przez `python3 -c "import shutil; …"`;
+- `.claude/skills/dostawa/SKILL.md` = dawna MAPA §3 jako kroki (źródło jedyne, M12; oryginał w `/archiwum/MAPA-do-v4.37.9.md`). Scalenie (`fetch`, `checkout main`, `merge`) i `git push origin main` jako **osobne** wywołania Bash (SK5), potem powrót na gałąź sesji. Gdyby `cp` do `backup/` było blokowane (prowokacja A6), backup przez `python3 -c "import shutil; …"`;
 - `.claude/skills/przekazanie/SKILL.md` = dawne EFFORT-ZASADY §5 + szablon promptu.
 
 - `.claude/skills/kondensacja/SKILL.md` (U2, D10): argument = plik zamrożony; kroki: przeczytaj plik w całości; kod jest arbitrem (`tools/mapa_kodu.py -f`); scal warstwy „vX supersedes” do stanu obecnego; uwzględnij zmiany odłożone w CHANGELOG (STATUS wskazuje od której wersji); historia zostaje w CHANGELOG i archiwum; nagłówek „stan: skondensowany v<wersja>” zamiast nagłówka zamrożenia, nazwa pliku bez zmian; agent `recenzent` dostaje stary (`git show origin/main:<plik>`) i nowy plik i szuka zgubionych reguł i zmienionych znaczeń; usuń plik z kolejki w STATUS; osobny commit, bez zmian kodu.
 
-**Testy (U5):** przed commitem `bash MIGRACJA/hooks/test_hooks.sh .claude/hooks/hooks.py` → `WYNIK: 60/60` (repo testowe w katalogu tymczasowym, nic nie dotyka Foldery). Każda późniejsza zmiana `hooks.py`: ten sam test (skrypt przenieść do `GaleriaFolderow/tools/test_hooks.sh` w A6.6).
+**Testy (U5):** `cp MIGRACJA/hooks/test_hooks.sh GaleriaFolderow/tools/test_hooks.sh` (tu, w A5, bo `/CLAUDE.md` do niego odsyła, SK8), potem `bash GaleriaFolderow/tools/test_hooks.sh .claude/hooks/hooks.py` → `WYNIK: 82/82` (repo testowe w katalogu tymczasowym, nic nie dotyka Foldery). Każda późniejsza zmiana `hooks.py`: najpierw ten test na kopii.
 
 **Gdy klasyfikator odrzuca zapisy w `.claude/`** (chroniona ścieżka, „Self-Modification”, M11): według D9 przełączasz sesję na „Accept edits” i zatwierdzasz zapis. W ostateczności pliki trafiają do `/MIGRACJA/staging/.claude/…`, a Ty przenosisz je na GitHubie (Add files); po wgraniu sesja uruchamia test hooków i prowokacje A6, bo wgranie może zmienić końcówki linii (A1).
 
@@ -216,18 +220,18 @@ Hooki i ustawienia działają w trwającej sesji po zapisaniu pliku, także gdy 
    - pytanie bez zmian w tej turze → bez przypomnienia;
    - druga edycja już zmienionego pliku → przypomnienie (T5);
    - (U6) `sed -i` dodający `push:` pod `on:` w workflow, potem `git push --dry-run origin HEAD` (gałąź sesji) → blokada; przywrócić plik;
-   - (U1) na gałęzi próbnej od `origin/main`: commit zmieniający tylko `galeria.py` (np. pusta linia) → `git push --dry-run origin HEAD:main` → blokada „STATUS.md nie zmieniony”; potem usunąć gałąź próbną;
+   - (U1, SK1) próba w osobnym worktree, nie przez `git checkout` w głównej kopii (usunąłby `.claude/hooks/hooks.py` z dysku): `git worktree add -b probe /tmp/probe origin/main`; w **osobnym** wywołaniu Bash `cd /tmp/probe && printf '\n' >> GaleriaFolderow/galeria.py && git commit -qam probe`; w kolejnym `cd /tmp/probe && git push --dry-run origin HEAD:main` → blokada „STATUS.md nie zmieniony”; potem `git worktree remove --force /tmp/probe && git branch -D probe`;
+   - (SK7) `git push --dry-run origin HEAD:main` na kompletnej gałęzi migracji przy zielonym `doc_check` → **musi przejść**;
    - (U2) jeden znak dopisany do pliku zamrożonego → `doc_check` czerwony z komunikatem pkt 11; przywrócić;
    - (U5) `hooks.py turn` i `stop` z wejściem „nie json” → kod 0 (to robi też `test_hooks.sh`).
 2. Read `GaleriaFolderow/galeria.py` (`limit: 50`) → komunikat „Loaded … galeria-niezmienniki.md”. Jeśli reguła utworzona w trakcie sesji się nie wczyta, rozstrzyga A7.2.
 3. `./tools/testy.sh` (K6, K7), konkordancja 100% względem SHA z A3.3 (K4), `doc_check` (K3).
 4. **Recenzent** (general-purpose, model opus, tylko odczyt): sprawdza konkordancję, nowy CLAUDE.md, MAPA, `doc_check`, hooki i treść agent-rules. Każde istotne znalezisko: poprawka albo odrzucenie z dowodem.
-5. Scalenie do `main` według reguły scalania (zanotować SHA przed i po). **Jeśli klasyfikator odrzuci scalenie** (zmiana `/CLAUDE.md` i `.claude/` = „Self-Modification”, findings.md 2026-10-06, n=2; T4):
-   - sesja uruchamia `doc_check` i `testy.sh`, wypycha gałąź i otwiera PR (`create_pull_request`, którego plan nie blokuje);
+5. Paczka zip tej samej wersji, STATUS.md (z kolejką kondensacji, D10), usunięcie `/MIGRACJA/` (prócz `KONKORDANCJA.tsv` i `ZAMROZONE.tsv` w `dokumentacja/migracja/`; `konkordancja.py` przenieść tam też; commit; to musi być przed scaleniem, żeby `MIGRACJA/` nie trafiła na `main` (SK8)).
+6. Scalenie do `main` według reguły scalania (zanotować SHA przed i po). **Jeśli klasyfikator odrzuci scalenie** (zmiana `/CLAUDE.md` i `.claude/` = „Self-Modification”, findings.md 2026-10-06, n=2; T4):
+   - sesja uruchamia `doc_check`, `testy.sh` i `git push --dry-run origin HEAD:main` (ta sama bramka co hook, nic nie wysyła; SK9), wypycha gałąź i otwiera PR (`create_pull_request`, którego plan nie blokuje);
    - Ty scalasz na GitHubie;
    - to samo czeka każdą przyszłą sesję zmieniającą `/CLAUDE.md` lub `.claude/`; wpisać to do `/CLAUDE.md`.
-6. Paczka zip tej samej wersji, STATUS.md (z kolejką kondensacji, D10), usunięcie `/MIGRACJA/` (prócz `KONKORDANCJA.tsv` i `ZAMROZONE.tsv` w `dokumentacja/migracja/`; `konkordancja.py` przenieść tam też; `test_hooks.sh` → `GaleriaFolderow/tools/`).
-
 ### A7. Odbiór w **nowej** sesji (na `main`, M1)
 Nowa sesja zaczyna od `origin/main`, czyli już po scaleniu. Poprawki idą „do przodu” małymi commitami.
 1. K1: Ty wpisujesz `/context` (Memory files = `/CLAUDE.md` ≤ 5k). Albo sesja sama uruchamia `claude -p "/context" --model opus --effort medium --permission-mode default --max-turns 1 --max-budget-usd 0.5` w korzeniu repo (mierzy to, co dostaje nowa sesja na starcie, 0 USD). Wynik SessionStart widoczny w odpowiedzi.
@@ -258,19 +262,16 @@ Nowa sesja zaczyna od `origin/main`, czyli już po scaleniu. Poprawki idą „do
 | Rozjazd strażnika i dokumentów | wysokie bez jednego commitu | A4 w jednym commicie, testy przed pushem |
 | Klasyfikator odrzuca zapisy `.claude/` / CLAUDE.md | średnie (findings.md 2026-10-06, n=2) | ścieżka `staging/` (A5) |
 | Zły hook blokuje pracę | niskie | testy JSON, prowokacje; awaryjnie `--settings '{"disableAllHooks": true}'` (CC hooks.md) |
-| Hook po cichu nie działa (ścieżka, `chmod`) | średnie | `/hooks`, prowokacje A6.2 |
+| Hook po cichu nie działa albo blokuje wszystko (ścieżka, brak pliku) | średnie | forma powłoki z warunkiem istnienia (SK1), prowokacje A6.1 |
 | Pliki w etapie A są „warstwowe”, mogą zawierać sprzeczne akapity | pewne do czasu B | nagłówek „nowszy zastępuje starszy” (jak dziś), kondensacja przy dotknięciu obszaru |
-| `git mv` jednak wczytuje stary plik (niezweryfikowane) | niskie | `/context` w A0.1; jeśli wczytał, praca dalej działa, tylko drożej |
+| `git mv` jednak wczytuje stary plik (niezweryfikowane) | niskie | sprawdzenie transkryptu w A0.2; jeśli wczytał, praca dalej działa, tylko drożej |
 | Agenci workflow bez SubagentStart (niezweryfikowane) | nieznane | reguły dla agentów powtarzać w promptach workflow |
 | GitHub MCP, `gh` lub skrypt omija hook (np. push z wnętrza skryptu) | niskie | deny narzędzi MCP i `gh pr merge`/`gh api *merge*`; pełna ochrona tylko branch protection (D6) |
-| Hook nie startuje (brak bitu wykonywalności po wgraniu przez GitHub) | było: średnie | wywołanie przez `bash`/`python3` (T2) |
-| Scalenie odrzucone przez klasyfikator | średnie | PR + scalenie przez Ciebie (A6.5, T4) |
+| Scalenie odrzucone przez klasyfikator | średnie | PR + scalenie przez Ciebie (A6.6, T4) |
 | Dokumentacja nie nadąża za kodem po migracji (U1) | wysokie bez strażnika | reguły różnicy przy pushu na `main` (H); świadome obejście tylko jawną linią „docs: bez zmian (powód)” |
 | Warstwy odrastają w plikach dosłownych; etap B się nie kończy (U2) | wysokie bez zamrożenia | `ZAMROZONE.tsv` + `doc_check` pkt 7, 8, 11; sesje kondensacji zlecane przez Ciebie (D10) |
 | Pilna poprawka w pliku zamrożonym | średnie | zapis w CHANGELOG + STATUS albo `/kondensacja` tego pliku |
-| MAPA rośnie przez wygenerowaną mapę kodu (U3) | było: pewne | §4 usunięta, mapa na żądanie |
 | Hook z CRLF blokuje Bash albo każdy prompt (U5) | było: średnie | hooki w Pythonie, nieblokujące zawsze exit 0, test CRLF |
-| Wyzwalacz CI dodany obejściem (`sed`) zużywa minuty przy pushu gałęzi (U6) | było: średnie | sprawdzenie workflow przy każdym `git push` |
 | Push z wnętrza skryptu, `git` przez alias lub `sh -c` omija strażnika | niskie | znane ograniczenie (O0 §4); twardo tylko branch protection (D6) |
 
 ## 7. Wycofanie
@@ -289,20 +290,13 @@ Nowa sesja zaczyna od `origin/main`, czyli już po scaleniu. Poprawki idą „do
 
 ## Załącznik H: `hooks.py` i test
 
-Pliki: `reports/foldery-hooks/hooks.py` i `reports/foldery-hooks/test_hooks.sh` w ClaudeEXPERT (w Foldery: `MIGRACJA/hooks/`). Kopiować `cp`, nie przepisywać. Zastępuje Załącznik S wersji 4.1 (kod `guard_bash.py` wszedł do `hooks.py` jako podpolecenie `bash`, bez zmian logiki force/main; 22 przypadki zachowane).
+Pliki: `reports/foldery-hooks/hooks.py` i `reports/foldery-hooks/test_hooks.sh` w ClaudeEXPERT (w Foldery: `MIGRACJA/hooks/`). Kopiować `cp`, nie przepisywać. Zastępuje Załącznik S wersji 4.1 (kod `guard_bash.py` wszedł do `hooks.py` jako podpolecenie `bash`, logika force/main rozszerzona po recenzji sceptyka, SK4–SK5; 22 przypadki zachowane).
 
-Wpis w `settings.json` (przykład): `{"type":"command","command":"python3","args":["-I","${CLAUDE_PROJECT_DIR}/.claude/hooks/hooks.py","bash"],"timeout":120}`.
+Wpis w `settings.json` (przykład, forma powłoki, SK1): `{"type":"command","command":"[ ! -f \"$CLAUDE_PROJECT_DIR/.claude/hooks/hooks.py\" ] || exec python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/hooks.py\" bash","timeout":120}`.
 
-`bash test_hooks.sh hooks.py` buduje w katalogu tymczasowym repo z atrapą `origin`, `doc_check` (czerwony przy `RED=1`) i workflow, i sprawdza (60 przypadków):
-- 22 przypadki z dawnego Załącznika S (force, `+refspec`, `--mirror`, push na `main` różnymi drogami, `filter-repo`, push gałęzi sesji przy czerwonym `doc_check`);
-- worktree na `main` przy czerwonym `doc_check` → blokada; główna kopia na gałęzi sesji → przechodzi (S4);
-- reguły różnicy (U1): kod bez CHANGELOG/dokumentacji → blokada; z CHANGELOG bez dokumentacji → blokada; z „docs: bez zmian (powód)” → przechodzi; bez STATUS → blokada; komplet → przechodzi;
-- workflow (U6): `push:` dopisane `sed`-em na dysku → blokada pushu gałęzi; `on: [push, workflow_dispatch]` w HEAD → blokada; 6 przypadków parsera (`on: push`, `"on":` blokowo, inline `{…}`, lista `-`, komentarz);
-- `edit`: zapis w `backup/` → blokada; Edit dodający `push:` → blokada; zmiana `inputs` → przechodzi; Write z `schedule` → blokada;
-- `turn`/`stop`: cisza bez zmian, przypomnienie po zmianie, cisza z listą „Zmiany…”, cisza przy `stop_hook_active`, przypomnienie po ponownej edycji;
-- `session`, `subagent`; zły JSON i zły katalog → kod 0; kopia `hooks.py` z CRLF działa (blokuje force, `turn` → 0).
+`bash test_hooks.sh hooks.py` buduje w katalogu tymczasowym repo z atrapą `origin`, `doc_check` (czerwony przy `RED=1`) i workflow, i sprawdza 82 przypadki: 22 z dawnego Załącznika S, worktree (S4), reguły różnicy (U1), workflow i parser `on:` (U6), `edit`, `turn`/`stop`, odporność na zły JSON i CRLF, 22 z recenzji sceptyka. Lista z opisem: `foldery-migration-plan-recenzje.md`, Załącznik H-lista.
 
-[MEASURED: `bash test_hooks.sh hooks.py` → `WYNIK: 60/60`, 2026-10-08, Linux, Python 3, git; poza Claude Code, czyli bez sprawdzenia, jak Claude Code przekazuje wejście: to sprawdzają prowokacje A6.]
+[MEASURED: `bash test_hooks.sh hooks.py` → `WYNIK: 82/82`, 2026-10-08, Linux, Python 3, git; poza Claude Code, czyli bez sprawdzenia, jak Claude Code przekazuje wejście: to sprawdzają prowokacje A6.]
 
 Znane granice: strażnik nie widzi pushu z wnętrza skryptu, przez alias git ani `sh -c "…"` (O0 §4); reguła „docs: bez zmian (powód)” jest furtką z zapisem, nie oceną treści; jakość treści dokumentacji ocenia tylko recenzent.
 
