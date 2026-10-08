@@ -23,26 +23,25 @@ Słowniczek pojęć: Raport, początek pliku.
 | K7 | Test mutacyjny `doc_check` w `test_logic` przechodzi na nowym układzie | `test_logic` | jest, na starym |
 | K8 | Trwałość: push na `main` bez zmiany STATUS.md albo ze zmianą kodu bez CHANGELOG/dokumentacji jest blokowany; zmiana pliku zamrożonego daje czerwony `doc_check`; wyzwalacz CI inny niż `workflow_dispatch` blokuje **każdy** push | `bash test_hooks.sh` (82/82) + prowokacje A6 | 0 |
 
-## 2. Decyzje właściciela przed startem
+## 2. Decyzje właściciela (podjęte 2026-10-08, wszystkie zgodnie z rekomendacją)
 
-| # | Pytanie | Rekomendacja |
-|---|---|---|
-| D1 | Zgoda na etap A (przeniesienie, nowy `doc_check`, hooki) | **Tak** |
-| D2 | Czy zip ma zawierać nowy `/CLAUDE.md` (leży poza `GaleriaFolderow/`) | **Nie.** Zip jest dla Twojego Windowsa, Claude pracuje z gita (MAPA §0). Reguła „always re-add CLAUDE.md to the zip” (stary §2) do usunięcia |
-| D3 | Archiwum starego CLAUDE.md w `/archiwum/CLAUDE-do-v4.37.9.md` (korzeń repo, poza zipem i poza `GaleriaFolderow/`; nazwa ≠ `CLAUDE.md`, więc nie ładuje się samo); usunięte po zakończeniu etapu B (zostaje w historii git) | **Tak** |
-| D4 | Backupy → tagi git; zip (20 MB) commitowany przy każdej dostawie zostaje na zawsze w historii git (~+20 MB na sesję: wolniejszy klon, dysk sesji ~30 GB, O0 §7) | **Osobna sprawa, nie w tej migracji, ale do decyzji wkrótce** (np. zip tylko przez SendUserFile, bez commitu) |
-| D5 | CI `doc_check` na push | **Nie** (limit minut Actions); zastępuje go hook przed pushem na `main` |
-| D6 | Branch protection `main` | **Nie teraz** (prywatne repo = płatny plan, O0 §7) |
-| D7 | Wyjątek od reguły „scalaj z `main` po każdej pracy”: etap A scalany raz, po A6 (odbiór w sesji migracji), a nie po każdej fazie | **Tak** (pół migracji na `main` zostawiłoby następnym sesjom niespójny system) |
-| D8 | Plan trafia do Foldery jako `/MIGRACJA/PLAN-MIGRACJI.md` (+ `MIGRACJA/RAPORT.md` = analiza ze szkicami (szkice hooków w Raporcie §6 są **nieaktualne**, obowiązuje Załącznik H), + `MIGRACJA/CLAUDE-NOWY.md` = gotowy nowy CLAUDE.md, + `MIGRACJA/hooks/hooks.py` i `MIGRACJA/hooks/test_hooks.sh` = gotowe hooki z testem, + `MIGRACJA/RECENZJE.md` = decyzje z recenzji) **w korzeniu repo** (poza `GaleriaFolderow/`, żeby jego przeczytanie nie wczytało starego CLAUDE.md). Wgrywasz go sam albo pozwalasz mi go tam wypchnąć. Folder `/MIGRACJA/` usuwany na końcu etapu A | **Tak** |
-| D9 | Tryb uprawnień sesji migracji: **Auto**; gdy klasyfikator odmówi zapisu w `.claude/`, przełączasz sesję na chwilę na „Accept edits” i zatwierdzasz zapis kliknięciem (ścieżki chronione w tym trybie pytają, O0 §4; Z19), potem z powrotem Auto. Wgrywanie plików przez GitHub tylko w ostateczności | **Tak** (musisz być wtedy przy sesji; czekanie na zgodę = bezczynność, sesja może wygasnąć, O0 §7) |
-| D10 | Etap B jako osobne sesje kondensacji zlecane przez Ciebie (`/kondensacja`, po jednym pliku, kolejność w STATUS.md: najpierw niezmienniki), zamiast „przy okazji” | **Tak**; ok. 15–18 plików × ~1 h [ASSUMPTION], można rozłożyć w czasie, bo pliki są zamrożone |
+- **D1** etap A: tak.
+- **D2** nowy `/CLAUDE.md` w zipie: nie; reguła „always re-add CLAUDE.md to the zip” do usunięcia (sesje biorą go z repo, zip jest tylko do uruchamiania programu).
+- **D3** stary CLAUDE.md → `/archiwum/CLAUDE-do-v4.37.9.md` (poza zipem i `GaleriaFolderow/`, nazwa ≠ `CLAUDE.md`); usunięty po etapie B (zostaje w git).
+- **D4** backupy → tagi oraz zip 20 MB commitowany przy każdej dostawie (~+20 MB historii na sesję): osobna sprawa, poza migracją, do decyzji wkrótce.
+- **D5** CI `doc_check` na push: nie (minuty Actions); zastępuje go strażnik pushu na `main`.
+- **D6** branch protection: nie teraz (prywatne repo = płatny plan, O0 §7).
+- **D7** etap A scalany z `main` raz, po A6, a nie po każdej fazie (pół migracji na `main` = niespójny system dla następnych sesji).
+- **D8** plan w `/MIGRACJA/` (poza `GaleriaFolderow/`): **wykonane**, commit `a3637c4` na `main`.
+- **D9** tryb sesji: Auto; przy odmowie zapisu w `.claude/` właściciel przełącza na „Accept edits”, zatwierdza i wraca do Auto (ścieżki chronione pytają w tym trybie, O0 §4). Wgrywanie przez GitHub tylko w ostateczności.
+- **D10** etap B: osobne sesje `/kondensacja <plik>` zlecane przez właściciela, kolejka w STATUS.md, najpierw niezmienniki; ok. 15–18 × ~1 h [ASSUMPTION].
+- **Audyt:** dwóch audytorów równolegle w A6.4.
 
 ## 3. Wykonawca, model, koszt, czas (etap A)
 
 ```
 USTAW PRZED WKLEJENIEM
-Model: Opus 5.5 · wysiłek: high · workflow: nie (1 recenzent na końcu, narzędzie Agent)
+Model: Opus 5.5 · wysiłek: high · workflow: nie (2 audytorów równolegle na końcu, narzędzie Agent, A6.4)
 Start (chmura): model Opus 5.5 w wyborze modelu sesji, potem jako pierwsze polecenie /effort high
 Tryb uprawnień: Auto (D9)
 Uzasadnienie: praca mechaniczna, ale z wieloma zależnymi krokami i twardą weryfikacją; podział na agentów niepotrzebny.
@@ -50,7 +49,7 @@ Uzasadnienie: praca mechaniczna, ale z wieloma zależnymi krokami i twardą wery
 Prompt startowy dla sesji Foldery (wklejasz po ustawieniu):
 > Wykonaj `MIGRACJA/PLAN-MIGRACJI.md`, etap A, w podanej kolejności. Pierwsze polecenia sesji to kroki A0.1–A0.2, przed otwarciem jakiegokolwiek pliku w `GaleriaFolderow/`.
 
-- Szacunek: **~10–25 USD w cenniku API, 2–4 h** [ASSUMPTION]. Bez agentów-redaktorów, a stary CLAUDE.md nie ładuje się nikomu dzięki A0.2 (uwaga M8). Większość kosztu to odczyt archiwum przy przypisywaniu zakresów (A2): przypisywać po liście lead-inów z rozmiarami, nie czytając całości. Koszt zmierzyć z transkryptu po A2 (uwaga recenzenta technicznego).
+- Szacunek: **~10–25 USD w cenniku API, 2–4 h** [ASSUMPTION], plus kilka USD na dwóch audytorów. Bez agentów-redaktorów (praca jest sekwencyjna; w chmurze najwyżej 2 agentów workflow naraz, O0 §3), a stary CLAUDE.md nie ładuje się nikomu dzięki A0.2 (uwaga M8). Większość kosztu to odczyt archiwum przy przypisywaniu zakresów (A2): przypisywać po liście lead-inów z rozmiarami, nie czytając całości. Koszt zmierzyć z transkryptu po A2 (uwaga recenzenta technicznego).
 - Program bez zmian: `APP_VERSION` 4.37.9, ta sama nazwa paczki (reguła „docs nie zmieniają wersji”).
 
 ## 4. Etap A: fazy
@@ -226,7 +225,10 @@ Hooki i ustawienia działają w trwającej sesji po zapisaniu pliku, także gdy 
    - (U5) `hooks.py turn` i `stop` z wejściem „nie json” → kod 0 (to robi też `test_hooks.sh`).
 2. Read `GaleriaFolderow/galeria.py` (`limit: 50`) → komunikat „Loaded … galeria-niezmienniki.md”. Jeśli reguła utworzona w trakcie sesji się nie wczyta, rozstrzyga A7.2.
 3. `./tools/testy.sh` (K6, K7), konkordancja 100% względem SHA z A3.3 (K4), `doc_check` (K3).
-4. **Recenzent** (general-purpose, model opus, tylko odczyt): sprawdza konkordancję, nowy CLAUDE.md, MAPA, `doc_check`, hooki i treść agent-rules. Każde istotne znalezisko: poprawka albo odrzucenie z dowodem.
+4. **Dwóch audytorów równolegle** (dwa wywołania narzędzia Agent w jednej odpowiedzi; `general-purpose`, `model: opus`; tylko odczyt: w poleceniu zakaz edycji, commitów i pushu, wyniki próbne tylko w `/tmp`). Każdy dostaje w poleceniu: cel, SHA z A3.3, listę plików, format raportu (ID, waga, plik, dowód: polecenie → wynik, poprawka), prawo „nic nie znalazłem”, zakaz pytania właściciela. Model i effort podane jawnie (agent nie widzi tej rozmowy ani preferencji właściciela, O0 §2):
+   - **Audytor 1, bezstratność i spójność:** konkordancja 100% względem SHA z A3.3, `ZAMROZONE.tsv` = sha plików, nowy `/CLAUDE.md` (wszystkie ścieżki istnieją, brak sprzeczności z plikami dosłownymi poza nagłówkiem pierwszeństwa), MAPA §1, STATUS, odwołania `§` (A3.4), agent-rules ≤ 9 000 znaków.
+   - **Audytor 2, egzekwowanie:** `settings.json` (deny, hooki w formie powłoki z warunkiem istnienia pliku), `test_hooks.sh` 82/82, wyniki prowokacji A6.1 z transkryptu, `doc_check` v2 punkt po punkcie i jego test mutacyjny, próby obejścia strażnika na kopii repo w `/tmp` (bez pushu).
+   Każde istotne znalezisko: poprawka albo odrzucenie z dowodem, zapis w POSTEP.md.
 5. Paczka zip tej samej wersji, STATUS.md (z kolejką kondensacji, D10), usunięcie `/MIGRACJA/` (prócz `KONKORDANCJA.tsv` i `ZAMROZONE.tsv` w `dokumentacja/migracja/`; tam też przenieść `konkordancja.py`, `PLAN-MIGRACJI.md` i `RECENZJE.md`, bo nowa sesja odbioru A7 i etap B potrzebują planu, a `migracja/` jest wyłączona z limitu 40 KB; commit; to musi być przed scaleniem, żeby `MIGRACJA/` nie trafiła na `main` (SK8)).
 6. Scalenie do `main` według reguły scalania (zanotować SHA przed i po). **Jeśli klasyfikator odrzuci scalenie** (zmiana `/CLAUDE.md` i `.claude/` = „Self-Modification”, findings.md 2026-10-06, n=2; T4):
    - sesja uruchamia `doc_check`, `testy.sh` i `git push --dry-run origin HEAD:main` (ta sama bramka co hook, nic nie wysyła; SK9), wypycha gałąź i otwiera PR (`create_pull_request`, którego plan nie blokuje);
