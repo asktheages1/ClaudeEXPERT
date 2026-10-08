@@ -3,6 +3,10 @@
 Important findings, crucial information and notable interactions from sessions. Newest first.
 Format: `## YYYY-MM-DD — title`, then the fact with its evidence tag (see CLAUDE.md "Evidence tags"). Promote confirmed, general facts to `knowledge/` (with the owner's approval) and note it here.
 
+## 2026-10-08 — v2 package: 15 CC doc pages split into Read-sized parts, 457.6k tokens of imports
+- Added sub-agents, hooks (250,548 B), settings, permissions, workflows, claude-code-on-the-web, prompt-caching; every page over 36 KB split at `##`/`###` boundaries (never inside a code fence) into 48 doc files. `/context`: 57 memory files, all loaded, largest 17.8k tokens (< 25k Read limit), memory files 457.6k, start 482k / 1M (48%) [MEASURED: claude -p "/context" --model opus --effort medium, 2026-10-08, CC 2.1.294, claude-opus-5-5, n=1]. With the cloud compaction threshold ~784K (O0 §1) about 300k remains for the conversation [ASSUMPTION].
+- Owner relayed that the session using v1 said files were "too big, over the token limit". Imports are not subject to the Read limit (measured above); the limit applies only when files are Read directly, e.g. skills/claude-directory/context-window pages > 25k tokens. Environment of that session unknown.
+
 ## 2026-10-08 — Root CLAUDE.md importing O0–O5, findings, exceptions and 8 CC doc pages: 230.6k tokens at start
 - A copy of this repo's CLAUDE.md with 16 `@` imports (one per line) at the end: all 16 listed under Memory files; memory files 230.6k tokens, session start 255k / 1M (25%), no stray recursive imports from `@` text inside the doc pages [MEASURED: claude -p "/context" --model opus --effort medium in the unpacked package, 2026-10-08, CC 2.1.294, claude-opus-5-5, n=1]. Per page: skills 38.2k, claude-directory 36.4k, context-window 25.8k, memory 18.9k, best-practices 12.6k, large-codebases 11.8k, features-overview 10.2k, debug-your-config 5.6k.
 - Built as a one-off ZIP for the owner, not committed; fine for a single quiz session, too costly as a standing setup (every agent that loads CLAUDE.md pays it).
