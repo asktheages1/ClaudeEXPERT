@@ -1,6 +1,6 @@
 # Plan migracji systemu dokumentacji Foldery
 
-Wersja: **2** (po recenzji „meta”, uwagi M1–M15 w Załączniku R) · 2026-10-08 · podstawa: `reports/foldery-analysis.md` (dalej „Raport”), Foldery `main` @ `be31a48`.
+Wersja: **3** (po dwóch rundach recenzji „meta”: M1–M15, N1–N8 w Załączniku R) · 2026-10-08 · podstawa: `reports/foldery-analysis.md` (dalej „Raport”), Foldery `main` @ `be31a48`.
 Słowniczek pojęć: Raport, początek pliku.
 
 ## 0. Idea w trzech zdaniach
@@ -52,9 +52,9 @@ Prompt startowy dla sesji Foldery (wklejasz po ustawieniu):
 
 Każda faza kończy się commitem i **pushem gałęzi sesji** (praca w chmurze ginie bez pushu, O0 §7). Postęp idzie do `/MIGRACJA/POSTEP.md` po każdej fazie: plik przeżywa kompaktowanie, rozmowa nie (O0 §8).
 
-### A0. Przygotowanie
-1. **Zanim cokolwiek w `GaleriaFolderow/` zostanie otwarte:** `git mv GaleriaFolderow/CLAUDE.md archiwum/CLAUDE-do-v4.37.9.md` i od razu `/context`, żeby potwierdzić, że zagnieżdżony CLAUDE.md się nie wczytał. `git mv` to nie `cat`/`head`, które go ładują (Raport B5/B6) [ASSUMPTION: do potwierdzenia tym `/context`]. Od tej chwili źródłem jest archiwum, czytane Readem z `offset/limit` lub `sed -n`.
-2. `git fetch origin main && git merge --ff-only origin/main`; zapisz SHA `main` w POSTEP.md (potrzebne do wycofania, §7).
+### A0. Przygotowanie (kolejność kroków 1–2 wiążąca, N3)
+1. `git fetch origin main && git merge --ff-only origin/main`, a SHA `main` zapisz w POSTEP.md (potrzebne do wycofania, §7). Fetch i merge nie otwierają plików przez Read ani `cat`, więc nie ładują zagnieżdżonego CLAUDE.md [ASSUMPTION; sprawdza to `/context` w kroku 2].
+2. **Zanim cokolwiek w `GaleriaFolderow/` zostanie otwarte:** `mkdir -p archiwum && git mv GaleriaFolderow/CLAUDE.md archiwum/CLAUDE-do-v4.37.9.md`, a od razu po tym `/context`, żeby potwierdzić, że zagnieżdżony CLAUDE.md się nie wczytał. `git mv` to nie `cat`/`head`, które go ładują (Raport B5/B6). Od tej chwili źródłem jest archiwum, czytane Readem z `offset/limit` lub przez `sed -n`.
 3. Pomiar bazowy (Raport §5, `/context` z importami w katalogu poza repo).
 4. Sprawdzenie odwołań w kodzie: `grep -n 'CLAUDE.md\|§[0-9]' GaleriaFolderow/galeria.py GaleriaFolderow/tests/*.py GaleriaFolderow/tools/*` → lista w POSTEP.md (np. `test_logic.py:2258` „(§5.5)”).
 5. `doc_check` jest od teraz czerwony na gałęzi (brak `GaleriaFolderow/CLAUDE.md`). To akceptowalne, bo nic nie jest scalane przed A6.
@@ -69,7 +69,8 @@ Każda faza kończy się commitem i **pushem gałęzi sesji** (praca w chmurze g
 
 | Źródło (archiwum) | Cel | Limit |
 |---|---|---|
-| nagłówek (l. 1–14) + §1 Zasady (l. 15–45) | **wewnątrz** nowego `/CLAUDE.md`, sekcja „Zasady użytkownika” (3,3 KB, dosłownie) | CLAUDE.md ≤ 11 KB |
+| nagłówek (l. 1–14) | tylko archiwum (w KONKORDANCJA.tsv: „zastąpione nowym `/CLAUDE.md`”) | — |
+| §1 Zasady (l. 15–45) | `GaleriaFolderow/dokumentacja/ZASADY-UZYTKOWNIKA.md` dosłownie, z nagłówkiem „brzmienie oryginalne z datami i cytatami; **obowiązujące brzmienie: `/CLAUDE.md`**”. Nowy `/CLAUDE.md` streszcza obecnie obowiązujące reguły (po polsku, uwagi przed wdrożeniem, scalanie, nazwa zipa, „Zmiany…”, bez komentarzy, uczciwość co do nieuruchomionego, dokumentacja w tej samej sesji według nowego układu) i odsyła do tego pliku. Dosłowne wklejenie §1 do CLAUDE.md odrzucone (N1): wniosłoby do pliku ładowanego wszystkim nieaktualne polecenia („wpis w §4/§8”, „MAPA §9”, „single source of truth”) | 40 KB |
 | §2 Pliki | `GaleriaFolderow/dokumentacja/PLIKI.md` | 40 KB |
 | §3 Środowisko i weryfikacja | `GaleriaFolderow/dokumentacja/SRODOWISKO-TESTY.md`; w `/CLAUDE.md` 6-linijkowy protokół weryfikacji (test najpierw, `testy.sh`, recenzent dla zmian GUI, „powiedz, czego nie uruchomiłeś”) jako reguła obowiązująca; szczegóły w pliku (uwaga M13) | 40 KB |
 | §4 Architektura | `GaleriaFolderow/dokumentacja/architektura/<obszar>.md` według obszarów z MAPA §1 (np. `operacje-plikow`, `panele-katalog`, `przegladarka-wideo`, `przycinanie-edycja`, `sortowanie` (Litery/Osoby/Strzałki/Boksy), `wyszukiwarka-zakladki`, `montaz-hybryda`, `okno-adresu-kadr-filmu`, `watki-tlo-diagnostyka`, `ai-wskazniki`); plik > 40 KB → `-1`, `-2` | 40 KB |
@@ -85,15 +86,15 @@ Każda faza kończy się commitem i **pushem gałęzi sesji** (praca w chmurze g
 1. Kopiowanie **tylko skryptem** (`sed -n 'a,bp'` / Python według KONKORDANCJA.tsv), nigdy przepisywaniem przez model (M9).
 2. Każdy plik docelowy dostaje 2-liniowy nagłówek: obszar, „przeniesione dosłownie z CLAUDE.md v4.37.9; akapity od najnowszego, nowszy zastępuje starszy; plik do kondensacji w etapie B”.
 3. **Skrypt konkordancji:**
-   - multizbiór linii archiwum (bez linii-nagłówków `## N.`) = suma multizbiorów linii przeniesionych do plików docelowych (łącznie z blokiem §1 w nowym CLAUDE.md, wyciętym między znacznikami `<!-- §1 start -->` / `<!-- §1 koniec -->`), bez dodanych nagłówków i bez pozostałej, nowej treści CLAUDE.md;
+   - multizbiór linii archiwum (bez linii-nagłówków `## N.`) = suma multizbiorów linii przeniesionych do plików docelowych plus linie oznaczone w KONKORDANCJA.tsv jako „tylko archiwum” (nagłówek l. 1–14), bez dodanych nagłówków i bez nowej treści CLAUDE.md;
    - wynik 100% albo lista różnic do wyjaśnienia;
    - to samo dla MAPA §9 i podziału USUWANIE;
-   - zapis wyniku w POSTEP.md.
+   - **uruchamiany na commicie zrobionym zaraz po A3.2, zanim A3.4/A4 zmienią przeniesione linie (N2)**; SHA tego commita i wynik zapisz w POSTEP.md; późniejsze sprawdzenia (A6.4, recenzent) liczą konkordancję względem tego SHA (`git show <sha>:<plik>`), a nie względem bieżących plików.
 4. Kontrola § (M6): `grep -rn '§[0-9]' GaleriaFolderow .claude CLAUDE.md` → każde odwołanie do starych sekcji zamienić na ścieżkę pliku (np. „CLAUDE.md §6” → „`.claude/rules/galeria-niezmienniki.md`”). Odwołania „§5.N” zostają, bo numery są stabilne; do nich dopisać plik `spec/SPEC-A|B.md`. Odwołania w testach z listy A0.4 też poprawić.
 
 ### A4. Nowe pliki nawigacji i strażnik (w **jednym commicie**)
 1. **`/CLAUDE.md`** (szkic: Raport §6, z poprawkami):
-   - zasady użytkownika = dosłowny §1 (A2);
+   - zasady użytkownika: aktualne brzmienie, krótko, z odsyłaczem do `dokumentacja/ZASADY-UZYTKOWNIKA.md` (A2, N1);
    - protokół weryfikacji (A2, §3);
    - start sesji (hook wypisuje stan);
    - nawigacja: „szukasz wiedzy → `GaleriaFolderow/MAPA.md` §1”;
@@ -125,11 +126,13 @@ Każda faza kończy się commitem i **pushem gałęzi sesji** (praca w chmurze g
       - `MAPA.md` ≤ 40 000;
       - `STATUS.md` ≤ 6 000;
       - każdy `dokumentacja/**/*.md` ≤ 40 000 (poza `migracja/`).
-   3. Adnotacje „(N KB)” w MAPA §1 zgodne z rzeczywistym rozmiarem ±10%.
+   3. Adnotacje „(N KB)” w MAPA §1 w pełnych KB, zgodne z rzeczywistym rozmiarem z tolerancją max(10%, 1 KB) (N7).
    4. Martwe odsyłacze: ścieżki w backtickach w MAPA §1 i `../CLAUDE.md` z końcówką `.md|.py|.sh|.bat|.txt|.tsv` istnieją.
    5. `GaleriaFolderow/CLAUDE.md` nie istnieje albo ma ≤ 2 000 B (zakaz powrotu wielkiego pliku).
    6. `../.github/workflows/*.yml`: pod `on:` brak `push:` i `pull_request:`.
    7. Pliki z nagłówkiem „stan: skondensowany” (etap B) nie zawierają lead-inów `**v4.` (M7c).
+   8. Każdy plik `dokumentacja/architektura/*.md` i `dokumentacja/spec/*.md`, którego nie ma w `KONKORDANCJA.tsv` (czyli nowy po migracji), musi mieć nagłówek „stan: skondensowany”. `doc_check` wypisuje (bez błędu) liczbę plików jeszcze nieskondensowanych, a STATUS.md je wymienia (N8).
+   9. `../.claude/rules/galeria-niezmienniki.md` zaczyna się od `---` w linii 1, zawiera `paths:` z `GaleriaFolderow/galeria.py` i zamykające `---`. Zepsuty YAML sprawiłby, że reguła (~15k tok.) ładowałaby się w każdej sesji na starcie [SOURCE: CC memory.md, „Rule frontmatter reference”] (N6).
 6. **`tests/test_logic.py`**, blok „v47+ dokumentacja” (~l. 10433–10454):
    - mutacja wersji 9.99.9 musi dać komunikaty z `CHANGELOG`, `STATUS`, `MAPA.md §4`, `README` (`len ≥ 4`);
    - nowe mutacje: fałszywy `../CLAUDE.md` 12 000 B → błąd limitu; MAPA §1 z nieistniejącą ścieżką → błąd odsyłacza; workflow z `push:` → błąd CI.
@@ -159,7 +162,7 @@ Szkice: Raport §6. Poniżej różnice, które obowiązują.
 - `doc_check` uruchamiany i blokujący (exit 2) **tylko przy pushu na `main`**: refspec `main`, `HEAD:main`, `*:main` albo `git push` bez refspec, gdy bieżąca gałąź = `main`;
 - push gałęzi sesji przechodzi zawsze, bo to ochrona pracy w toku.
 
-**`turn-baseline.sh`** (nowy, M4): zapisuje `HEAD` + `sha1(git status --porcelain)` do `${TMPDIR:-/tmp}/foldery-turn-<session_id>`.
+**`turn-baseline.sh`** (nowy, M4): zapisuje `HEAD` + `sha1(git status --porcelain)` do `${TMPDIR:-/tmp}/foldery-turn-<session_id>`. **Nie wypisuje nic na stdout** (wyjście git przekierowane do `/dev/null`), bo zwykły stdout hooka UserPromptSubmit trafia do kontekstu Claude [SOURCE: O2 §A6]. Musi się zmieścić w domyślnym limicie 30 s [SOURCE: O2 §A2] (N5).
 
 **`stop-check.sh`:**
 - porównuje stan z bazą **bieżącej tury**;
@@ -192,7 +195,7 @@ Hooki i ustawienia działają w trwającej sesji po zapisaniu pliku, także gdy 
    - `git push --dry-run origin HEAD` przy czerwonym `doc_check` → przechodzi;
    - Edit workflow z `push:` → blokada;
    - Edit pliku w `backup/` → deny;
-   - wywołanie `mcp__github__push_files` → deny;
+   - najpierw `/permissions` (czy reguły `mcp__github__*` są na liście deny, z nazwą serwera z tej sesji), potem `mcp__github__push_files` na **nieistniejącą gałąź i nieistniejące repo** → deny. Gdyby reguła nie zadziałała, wywołanie i tak się nie powiedzie (N4);
    - odpowiedź bez „Zmiany…” po zmianie pliku → jedno upomnienie;
    - pytanie bez zmian w tej turze → bez upomnienia.
 3. Read `GaleriaFolderow/galeria.py` (`limit: 50`) → komunikat „Loaded … galeria-niezmienniki.md”.
@@ -223,6 +226,7 @@ Nowa sesja zaczyna od `origin/main`, czyli już po scaleniu. Poprawki idą „do
   - historię zostawia w CHANGELOG i archiwum;
   - dodaje nagłówek „stan: skondensowany v<wersja>”;
   - commit jest osobny, przed zmianą kodu.
+- Wyjątek: sesja z drobną poprawką może odłożyć kondensację, wpisując to do STATUS.md („obszar X: kondensacja odłożona”). Ty możesz też zlecić wprost „skondensuj obszar X”.
 - Recenzent porównuje stary i nowy plik obszaru (diff dostępny, plik mały) pod kątem zgubionych reguł i zmienionych znaczeń.
 - `doc_check` (A4.5 pkt 7) pilnuje, żeby plik skondensowany nie odrastał warstwami wersji.
 - Koniec etapu B: wszystkie pliki skondensowane → usunąć `/archiwum/` (zostaje w git).
@@ -276,3 +280,12 @@ Nowa sesja zaczyna od `origin/main`, czyli już po scaleniu. Poprawki idą „do
 | M14 archiwum w `GaleriaFolderow/` | Przyjęta ze zmianą | archiwum w `/archiwum/` (poza zipem i grepem po `GaleriaFolderow`); samo `git grep` odrzucone, bo archiwum jest źródłem dla skryptu w A i dla kondensacji w B |
 | M15 GitHub MCP omija hooki | Przyjęta ze zmianą | deny 4 narzędzi zapisu zamiast hooka (prostsze i twarde) |
 | Uwaga o `read()` w `doc_check` | Przyjęta | A4.5 |
+| Odstępstwo „§1 dosłownie w CLAUDE.md” (runda 2) | **Wycofane** | N1 |
+| N1 nieaktualne reguły §1 w pliku ładowanym wszystkim | Przyjęta (mój błąd) | §1 → `ZASADY-UZYTKOWNIKA.md` dosłownie; nagłówek tylko do archiwum; CLAUDE.md streszcza obowiązujące reguły |
+| N2 konkordancja rozjedzie się po edycjach A3.4/A4 | Przyjęta | konkordancja na commicie po A3.2, SHA w POSTEP.md, późniejsze sprawdzenia względem SHA |
+| N3 kolejność `git mv` vs `merge --ff-only`, brak katalogu | Przyjęta | A0.1 merge, A0.2 `mkdir -p` + `git mv` |
+| N4 prowokacja MCP może naprawdę wypchnąć | Przyjęta | `/permissions`, potem wywołanie na nieistniejące repo/gałąź |
+| N5 stdout hooka UserPromptSubmit trafia do kontekstu | Przyjęta | `turn-baseline.sh` cichy, limit 30 s |
+| N6 zepsuty frontmatter reguły = ładowanie zawsze | Przyjęta | `doc_check` pkt 9 |
+| N7 tolerancja ±10% za ciasna | Przyjęta | pełne KB, max(10%, 1 KB) |
+| N8 kondensacja opcjonalna | Przyjęta | `doc_check` pkt 8 + lista w STATUS; wyjątek „odłożona” (§5) |
