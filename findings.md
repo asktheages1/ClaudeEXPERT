@@ -3,6 +3,11 @@
 Important findings, crucial information and notable interactions from sessions. Newest first.
 Format: `## YYYY-MM-DD — title`, then the fact with its evidence tag (see CLAUDE.md "Evidence tags"). Promote confirmed, general facts to `knowledge/` (with the owner's approval) and note it here.
 
+## 2026-10-08 — Citations check precision, not completeness or optimality
+- Owner's experience: answers with a citation for every claim were still wrong or suboptimal, because a better or alternative mechanism for the given configuration was left out. A citation proves a fact exists, not that the answer considered all options [ASSUMPTION, owner report, 2026-10-08].
+- Working method for design answers: state goal and constraints, list every candidate mechanism, eliminate each with a reason, give failure conditions of the pick, test the pick (and the runner-up when it matters) by experiment.
+- Example from this session: for "force full reading of 8 doc pages" Claude proposed only PostToolUse + Stop hooks and missed a candidate: a nested `CLAUDE.md` with `@` imports of the pages, which Claude Code loads on Read of a file in that directory and reloads after compaction (O0 §1, §2). Unverified: whether `@` imports expand in a nested CLAUDE.md and whether there is a size cap [ASSUMPTION; test with dummy files].
+
 ## 2026-10-08 — Size of 8 CC doc pages vs the Read limit ("read it all" instructions)
 - `curl -sL https://code.claude.com/docs/en/<page>.md` → all 200; bytes: memory 51,575 · large-codebases 34,296 · context-window 60,542 · best-practices 36,520 · skills 106,047 · claude-directory 92,536 · features-overview 28,566 · debug-your-config 15,873 (total ~426 KB) [MEASURED: curl + wc -c, 2026-10-08, CC 2.1.294].
 - skills = 38,167 and claude-directory = 36,439 tokens of content, over the 25,000-token Read limit, so each needs ≥ 2 Read calls with offset/limit; a plain Read gives a PARTIAL view (O0 §1) [MEASURED: Read counter (count − 7), 2026-10-08, CC 2.1.294, Opus 5.5, n=1]. Others estimated at 2.7 B/token (O0 §1): whole set ≈ 160k tokens [ASSUMPTION].
