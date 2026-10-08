@@ -3,6 +3,10 @@
 Important findings, crucial information and notable interactions from sessions. Newest first.
 Format: `## YYYY-MM-DD — title`, then the fact with its evidence tag (see CLAUDE.md "Evidence tags"). Promote confirmed, general facts to `knowledge/` (with the owner's approval) and note it here.
 
+## 2026-10-08 — Cloud container cannot reach the Artifact CDNs; npm registry works
+- From this cloud container: `cdn.jsdelivr.net` → HTTP 403 from the proxy, `cdnjs.cloudflare.com` and `unpkg.com` → no connection (curl code 000), `registry.npmjs.org` → 200 [MEASURED: `curl -s -o /dev/null -w '%{http_code}'` on each host, 2026-10-08, CC cloud env, Opus 5.5, n=1 per host].
+- Consequence: to preview an Artifact page that loads a library from those CDNs, `npm i <lib>@<exact version>` into the scratchpad and serve it to headless Chromium with Playwright `page.route` (worked for three@0.160.0 with SwiftShader WebGL; ~4 s per frame at 960×680 with shadows and a mirror reflector) [MEASURED: same session]. The published page itself still loads from the CDN in the viewer's browser.
+
 ## 2026-10-06 — Auto mode classifier blocks Claude from changing its own instructions, even on the owner's request
 - After the owner told Claude to merge to `main` itself, two actions were denied with reason `[Self-Modification]`: editing CLAUDE.md to record a standing approval to merge, and then fast-forwarding `main` with a branch that changes CLAUDE.md [MEASURED: 2 auto mode classifier denials, 2026-10-06, CC 2.1.291, Opus 5.5, n=2]. Consistent with O0 §4 (protected paths always go to the classifier). Ordinary edits to CLAUDE.md requested by the owner were allowed in the same session (n=3).
 - Consequence: the owner merges changes into `main` on GitHub. Whether merges touching only `knowledge/` pass the classifier is unverified.
