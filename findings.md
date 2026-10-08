@@ -3,6 +3,11 @@
 Important findings, crucial information and notable interactions from sessions. Newest first.
 Format: `## YYYY-MM-DD — title`, then the fact with its evidence tag (see CLAUDE.md "Evidence tags"). Promote confirmed, general facts to `knowledge/` (with the owner's approval) and note it here.
 
+## 2026-10-08 — Size of 8 CC doc pages vs the Read limit ("read it all" instructions)
+- `curl -sL https://code.claude.com/docs/en/<page>.md` → all 200; bytes: memory 51,575 · large-codebases 34,296 · context-window 60,542 · best-practices 36,520 · skills 106,047 · claude-directory 92,536 · features-overview 28,566 · debug-your-config 15,873 (total ~426 KB) [MEASURED: curl + wc -c, 2026-10-08, CC 2.1.294].
+- skills = 38,167 and claude-directory = 36,439 tokens of content, over the 25,000-token Read limit, so each needs ≥ 2 Read calls with offset/limit; a plain Read gives a PARTIAL view (O0 §1) [MEASURED: Read counter (count − 7), 2026-10-08, CC 2.1.294, Opus 5.5, n=1]. Others estimated at 2.7 B/token (O0 §1): whole set ≈ 160k tokens [ASSUMPTION].
+- large-codebases, claude-directory, features-overview and debug-your-config are not in the O1 index. CC 2.1.292–2.1.294 changelog: no change to Read or WebFetch limits [CL, grep, 2026-10-08].
+
 ## 2026-10-06 — Auto mode classifier blocks Claude from changing its own instructions, even on the owner's request
 - After the owner told Claude to merge to `main` itself, two actions were denied with reason `[Self-Modification]`: editing CLAUDE.md to record a standing approval to merge, and then fast-forwarding `main` with a branch that changes CLAUDE.md [MEASURED: 2 auto mode classifier denials, 2026-10-06, CC 2.1.291, Opus 5.5, n=2]. Consistent with O0 §4 (protected paths always go to the classifier). Ordinary edits to CLAUDE.md requested by the owner were allowed in the same session (n=3).
 - Consequence: the owner merges changes into `main` on GitHub. Whether merges touching only `knowledge/` pass the classifier is unverified.
