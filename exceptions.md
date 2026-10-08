@@ -6,4 +6,7 @@ Format: `## YYYY-MM-DD — rule → exception`, then:
 - Observed exception, with evidence (mandatory): `[MEASURED: command → result, date, CC version, model, n]` or `[SOURCE: URL, date]`.
 - Scope: when it applies, and what is still unverified.
 
-_No entries yet._
+## 2026-10-08 — nested CLAUDE.md loads on Read/Write/Edit only → also on Bash `cat` / `head`
+- General rule: subdirectory CLAUDE.md files (and `paths:` rules) load "when Claude uses the Read, Write, or Edit tool on a file in those subdirectories" [SOURCE: https://code.claude.com/docs/en/memory.md, 2026-10-08; O0 §2].
+- Observed exception: in a fresh `claude -p` session, Bash `cat sub/a.txt` and, in another session, `head -1 sub/a.txt` each produced `nested_memory` attachments for `sub/CLAUDE.md` and `.claude/rules/r.md` (`paths: sub/**`); Grep on `sub/` and `python3 -c "open('sub/a.txt')"` did not [MEASURED: claude -p --model sonnet --effort low --allowedTools "Bash(cat *)|Bash(head *)|Grep|Bash(python3 *)", transcript attachment order, 2026-10-08, CC 2.1.294, claude-sonnet-5-5, n=1 per command].
+- Scope: probably the file-reading commands Claude Code recognizes (the same set deny rules check, O0 §4) [ASSUMPTION]. Unverified: other commands (`sed -n`, `less`, `tail`), Glob, other CC versions.
