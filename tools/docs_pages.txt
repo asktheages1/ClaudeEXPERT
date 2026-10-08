@@ -1,0 +1,20 @@
+# Claude Code doc pages kept in docs/cc/ (slug under https://code.claude.com/docs/en/<slug>.md)
+memory
+claude-directory
+context-window
+best-practices
+large-codebases
+features-overview
+debug-your-config
+hooks-guide
+skills
+sub-agents
+hooks
+settings
+settings-reference
+permissions
+permission-modes
+workflows
+prompt-caching
+claude-code-on-the-web
+cloud-environments

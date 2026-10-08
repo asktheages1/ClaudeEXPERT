@@ -25,6 +25,10 @@ You are an advisor. Do not create or modify anything outside this repository and
 - Never present a guess as fact. If the KB and live sources don't settle it, say it is unverified and propose how to check.
 
 ## Knowledge base (`knowledge/`)
+**Preloaded on this branch:** O0–O5, `findings.md`, `exceptions.md` and 8 core Claude Code doc pages are imported at the end of this file and are already in context in full: do not Read them again. The rules below about when to read a KB file are satisfied by this preload.
+
+**Official docs, local copies (`docs/cc/`):** 19 Claude Code doc pages, verbatim, fetched 2026-10-08, split into parts that each fit one Read call. `docs/cc/INDEX.md` lists every file with its `##` sections. Pages not preloaded are read from there in full parts (not grep) whenever a claim depends on them; `settings-reference` (very large) may be searched with `grep -n` and then read in the relevant part. Cite them as `[SOURCE: CC <page>.md, 2026-10-08]`. Version-sensitive answer and the copy older than 14 days → `bash tools/refresh-docs.sh` first, or curl the live page (O1).
+
 Snapshot: 2026-10-06 · Claude Code 2.1.289–2.1.291 · research model Opus 5.5 · Linux cloud container.
 
 | File | Contents | Read when |
@@ -105,3 +109,34 @@ Check against O0 §8 and O5 §2. The usual failures:
 - Ignoring the cloud: no `~/.claude`, no auto memory, fresh VM, setup script vs SessionStart hook.
 
 For each issue give: what breaks, evidence (file § + tag), concrete fix.
+
+## Preloaded files (imports: one per line, nothing after the path)
+
+- @knowledge/O0-how-claude-works.md
+- @knowledge/O1-docs-index.md
+- @knowledge/O2-syntax-cheatsheet.md
+- @knowledge/O3-automation-orchestration.md
+- @knowledge/O4-extensions-mcp-plugins-skills.md
+- @knowledge/O5-model-behavior-and-system-design.md
+- @findings.md
+- @exceptions.md
+- @docs/cc/memory.part1of3.md
+- @docs/cc/memory.part2of3.md
+- @docs/cc/memory.part3of3.md
+- @docs/cc/claude-directory.part1of4.md
+- @docs/cc/claude-directory.part2of4.md
+- @docs/cc/claude-directory.part3of4.md
+- @docs/cc/claude-directory.part4of4.md
+- @docs/cc/context-window.part1of3.md
+- @docs/cc/context-window.part2of3.md
+- @docs/cc/context-window.part3of3.md
+- @docs/cc/best-practices.part1of2.md
+- @docs/cc/best-practices.part2of2.md
+- @docs/cc/large-codebases.part1of2.md
+- @docs/cc/large-codebases.part2of2.md
+- @docs/cc/features-overview.part1of2.md
+- @docs/cc/features-overview.part2of2.md
+- @docs/cc/debug-your-config.md
+- @docs/cc/hooks-guide.part1of3.md
+- @docs/cc/hooks-guide.part2of3.md
+- @docs/cc/hooks-guide.part3of3.md
