@@ -3,6 +3,13 @@
 Important findings, crucial information and notable interactions from sessions. Newest first.
 Format: `## YYYY-MM-DD — title`, then the fact with its evidence tag (see CLAUDE.md "Evidence tags"). Promote confirmed, general facts to `knowledge/` (with the owner's approval) and note it here.
 
+## 2026-10-09 — CC 2.1.294–2.1.295 deltas that matter for guardrail design (session ran 2.1.295)
+- 2.1.295: command and HTTP hooks accept `onFailure: "block"`: a hook that can't start, times out or exits with an unexpected code blocks the action. Before this, a missing script, timeout or exit 1 let the action through (O2 A6, O0 §4), so policy hooks failed open. Guardrail hooks should set it [CL: raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md, 2026-10-09]. Not yet in O2; unmeasured.
+- 2.1.295: fixed a file being treated as already read after a Bash `cat` that printed nothing, and Edit treating a file as fully read when its contents changed without an mtime change [CL, ibid.]. Relevant to "read in full before edit" hooks: CC's own read tracking had gaps before 2.1.295.
+- 2.1.294: fixed `prompt`/`agent` hooks written as instructions ("Block commands that…") allowing what they should block; improved judging of Stop/SubagentStop prompt hooks [CL, ibid.]. Prompt-type guardrails on ≤ 2.1.293 were unreliable.
+- 2.1.295: async hook JSON printed over several lines was ignored before; an async SessionStart hook's unchanged context was re-added on every resume [CL, ibid.].
+- KB update candidates: O2 A2 (handler fields: `onFailure`), O2 A6 (exit-code semantics), O0 §4. Need owner approval.
+
 ## 2026-10-08 — Foldery stage B (doc condensation): one session with per-file agents beats one owner-started session per file
 Analysis of the Foldery migration plan D10 ("one `/kondensacja <file>` session per file, ~15–18 × ~1 h") and of a competing "7 packages / ~12 agents" plan from another session (session_0115betLbPRXzyFSSkitdQj6). Method: KB + live docs research agent (Opus 5.5, high), own analysis, independent skeptic reviewer (Opus 5.5, high). Scratch reports were not committed.
 - D10 is not backed by any doc, KB fact, hook or `doc_check` rule: `hooks.py diff_problems()` blocks only frozen-file + `galeria.py` in one branch and additions to `ZAMROZONE.tsv`; nothing counts condensed files per branch [CODE: Foldery hooks.py l. 95–127, doc_check.py]. The plan tagged D10 itself as [ASSUMPTION]. The real constraint is one file per fresh *context*, which subagents give.
