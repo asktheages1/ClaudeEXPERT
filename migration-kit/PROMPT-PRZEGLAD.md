@@ -1,7 +1,7 @@
 # Health check of the documentation system (any project migrated with plan v5)
 
 Run when the session-start line says „przegląd zaległy”, after a model change, or monthly if the owner chose the
-scheduled check (owner rule in `CLAUDE.md`). Read-only except STATUS and BACKLOG. Budget ≤ 8 USD.
+scheduled check (owner rule in `CLAUDE.md`). Read-only except STATUS and BACKLOG.
 
 ```
 USTAW PRZED WKLEJENIEM

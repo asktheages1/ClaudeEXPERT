@@ -75,10 +75,18 @@ Rejected or changed, with reason:
   test” (22 cases came from the independent skeptic). Advisory cost was 91.7 USD in 5 sessions (not 94 / 6). Seven,
   not eight, files were condensed in Polish. „Batch estimate accurate” is n=1 and was 3–4× off in time.
 
+## 5a. Owner correction (2026-10-09)
+The first version of this package contained money limits (advisor stop at 40/45 USD, stage B pause above 1.3 × the
+estimate, pilot ≤ 15 USD, health check ≤ 8 USD, „budget” in the owner card). The owner never set a budget; they came
+from the coordinating session and a control agent. Removed on the owner's decision: estimates stay as information, the
+real cost is reported at the end, cost never stops a session. Kept: `--max-budget-usd 0.5` on single measuring
+`claude -p` calls (ClaudeEXPERT rule for nested runs) and the pause on an exhausted account rate limit (a hard limit
+of the platform, not a budget).
+
 ## 6. Cost of producing this package
 This session up to the rewrite: 53.4 USD (`get_session`, 2026-10-09 00:36 UTC, incl. the earlier retrospective and
-analysis work); the final figure is in the chat reply. That is 10 agents for one package — above v5's own advisor
-budget; it was an explicit owner request („tryb Agents”, up to 12–15 agents) and is not a pattern for routine work.
+analysis work); the final figure is in the chat reply. That is 10 agents for one package — above v5's advisor
+estimate; it was an explicit owner request („tryb Agents”, up to 12–15 agents) and is not a pattern for routine work.
 
 ## 7. Fix verification
 Round 1 (agent „weryfikator-poprawek”): almost all accepted findings present; 1 blocking (restart loop in stage A for a

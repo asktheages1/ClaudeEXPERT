@@ -177,8 +177,9 @@ migration text, bytes/token after a model change; `/doctor prompt-audit` date in
 ## 7. Estimates are priors
 Measured Foldery numbers (advisor 91.7 USD / 5 sessions; A 22.5 USD / 63 min; per-file condensation 3.56–8.14 USD each;
 batch 89.35 USD / 50 min / 37 agent starts / peak ≈ 8 at once; spec session 30.76 USD for 2 files) are priors, not
-promises. Every executor re-estimates from its own pilot: measured USD per unit × remaining units; > 1.3 × the upper
-bound → finish running units, stop launching, ask. Cost is read from `get_session` as the last tool call of a reply.
+promises. Every executor re-estimates from its own pilot (measured USD per unit × remaining units) and reports it as
+information. No money limits: the owner never set one, and a cost stop would leave work half-done or a session waiting
+for him. Cost is read from `get_session` as the last tool call of a reply.
 
 ## 8. Risks
 | Risk | Prevention |

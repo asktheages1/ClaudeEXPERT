@@ -15,7 +15,7 @@ Co zobaczysz: najpierw sprawdzenie etapu A, potem próba na 2 plikach (ok. 20 mi
 oceny. Potem fale: naraz do ok. 10 agentów (5 piszących + 5 recenzentów) — to normalne dla narzędzia Agent.
 Po próbie możesz odejść: sesja sama się budzi i wznawia; każdy gotowy plik jest od razu zapisany w git.
 Jeśli wrócisz, a sesja stoi — napisz: wznów.
-Szacunek: 110–150 USD, 1,5–2 h (przeliczę po próbie; powyżej 1,3 × górnej granicy przerwę i zapytam).
+Szacunek (informacja, nie limit): 110–150 USD, 1,5–2 h; po próbie podam przeliczenie.
 ```
 
 ## Placeholders (filled at step 1; agent prompts get absolute paths, never `<…>`)
@@ -94,7 +94,8 @@ Run steps 5–8 for both. Record cost before and after (`get_session`). Go / no-
 (a) completion notifications = agents launched, and `worker_epoch` and process start unchanged → go. A change means
     agents without a notification are lost: do the resume section and continue. Two restarts within pilot + first
     wave → switch to foreground agent calls (`run_in_background: false`, several in one message) for the rest.
-(b) pilot cost ≤ 15 USD; extrapolate (pilot USD ÷ pilot files) × 25 + 15. Above 1.3 × 150 → finish, ask the owner.
+(b) record the pilot cost and the extrapolation (pilot USD ÷ pilot files) × 25 + 15 in the ledger and, if the owner is
+    present, in one line to him. Information only: cost never stops the run.
 (c) no systematic flaw in the reviews; if there is one, fix `brief.md` (and `MIGRACJA/brief.md`) before the waves.
 (d) refusals in reports: a classifier refusal of `cp` into `.claude/rules/` → one line to the owner (Accept edits).
 Show the owner (if present) a 3-line sample: language, KB before → after, the first 3 content lines of one draft.

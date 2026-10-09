@@ -9,7 +9,7 @@ Model: Opus 5.5 (sprawdź w wyborze modelu — nie Fable) · wysiłek: high · w
 Start: nowa sesja z JEDNYM repozytorium ClaudeEXPERT (main), tryb Auto
 Pierwsza wiadomość: Wykonaj migration-kit/PROMPT-ANALIZA-I-PLAN-v2.md dla repozytorium asktheages1/<TARGET>.
 Twój udział: po ok. 20 min napisz „jestem” i odpowiedz na 2 pytania zbiorcze (ok. 3 min); na końcu scal PR.
-Szacunek: 25–40 USD, 1,5–2 h. Limit: 45 USD — sesja zatrzyma się sama i powie, co zdążyła.
+Szacunek (informacja, nie limit): 25–40 USD, 1,5–2 h.
 ```
 
 ## Goal (owner's words, 2026-10-08)
@@ -20,8 +20,8 @@ keep working after the migration, at proportional cost, with as little owner eff
 In scope: the owner's apps built with Claude. Out of scope: macOS, generic monorepos, other people's projects.
 
 ## Binding constraints
-- Budget 45 USD; check `get_session` usage.cost_usd after each step; at 40 USD stop and deliver in this order: decision
-  sheet answers → prompts → plan → report.
+- No money limit (owner: „Mogę dać i 25 agentów jak trzeba, nie o to chodzi”). Estimates are information; the real
+  cost (`get_session` usage.cost_usd) goes into the final reply. Never stop work because of cost.
 - Language: plan, prompts, report in English; the decision sheet, `JAK-ZACZAC` and replies in Polish.
 - Proportionality and protected items: plan §4. Standing owner rules: plan §2 (never ask them again).
 - Facts only where measured: area names, file lists and splits are left to the executor unless you measured them.
