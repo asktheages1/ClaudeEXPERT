@@ -185,7 +185,7 @@ for him. Cost is read from `get_session` as the last tool call of a reply.
 | Risk | Prevention |
 |---|---|
 | VM paused or reclaimed while agents run (owner away) | commit + push per unit; `worker_epoch` + process start recorded; self wake-up with `send_later`; resume section; compaction trigger re-reads the prompt |
-| Usage window exhausted | `get_session` rate limit before every launch; `isUsingOverage` = stop launching |
+| Usage window exhausted | `get_session` rate limit before every launch; status ≠ `allowed` = launch nothing, wake up at `resetsAt` (`send_later`) and resume by itself; `isUsingOverage` never stops work |
 | Main context too large (Foldery batch: 451k) | short agent reports (≤ 10 / ≤ 20 lines); automatic compaction (~784k) is survived by the resume section's step 0 (re-read prompt + ledger) |
 | Writers drop or invent content | one reviewer per file; growth ≤ old + 10 % unless justified; fixes grep-verified |
 | Spec meaning changed | spec brief, point-number gate, re-review always; disagreements go to the owner |

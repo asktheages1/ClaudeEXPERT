@@ -55,9 +55,10 @@ file not rewritten at the end is reported, never silently left.
   if ToolSearch finds `send_later`, keep exactly one pending wake-up 25 min ahead: „Sprawdź worker_epoch i ledger;
   wykonaj Wznowienie” (its trigger id in `<S>/agenci.txt`; the previous one deleted with `delete_trigger`). Before
   step 11 delete the pending wake-up; from step 11 on no new wake-ups (spec re-reviews there run with
-  `run_in_background: false`).
-- Before every launch: `get_session` — `rate_limit_info.status` ≠ `allowed` or `isUsingOverage` = true → launch
-  nothing, finish running units, `send_later` at `resetsAt`. A notification „failed” → same check; else resume once.
+  `run_in_background: false`), except the rate-limit wake-up below.
+- Before every launch: `get_session` — `rate_limit_info.status` ≠ `allowed` → launch nothing, finish running units,
+  `send_later` at `resetsAt`, then resume by itself. `isUsingOverage` never stops work (paid extra usage is not a
+  block). A notification „failed” → same check; else resume once.
 - One unit per commit; `git add` of exact paths, never `-A` or globs; push the branch after every commit.
 - Ledger `MIGRACJA/POSTEP-B.md` (committed with each unit): header = `<S>`, `<BR>`, `worker_epoch`, process start
   (`ps -o lstart= -C claude`), session id; one row per ACCEPTED unit: file, bytes old → new, review B/I/M, fixed ids,

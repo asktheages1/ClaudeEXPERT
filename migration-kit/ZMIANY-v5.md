@@ -82,6 +82,9 @@ from the coordinating session and a control agent. Removed on the owner's decisi
 real cost is reported at the end, cost never stops a session. Kept: `--max-budget-usd 0.5` on single measuring
 `claude -p` calls (ClaudeEXPERT rule for nested runs) and the pause on an exhausted account rate limit (a hard limit
 of the platform, not a budget).
+Second correction (2026-10-09): stage B and plan §8 still stopped launches on `isUsingOverage` = true. That is paid extra
+usage the owner enabled, not a platform block, so it was a money stop too; removed. The rate-limit wake-up at `resetsAt`
+is now allowed after step 11 as well, so an exhausted limit there no longer leaves the session waiting for the owner.
 
 ## 6. Cost of producing this package
 This session up to the rewrite: 53.4 USD (`get_session`, 2026-10-09 00:36 UTC, incl. the earlier retrospective and
