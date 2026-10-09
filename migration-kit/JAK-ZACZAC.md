@@ -10,7 +10,7 @@ nowy projekt — sesja doradcy kopiuje zabezpieczenia z uporządkowanego Foldery
 ## Kolejność (nowy projekt, np. pobtweaks)
 | # | Sesja (repozytorium) | Pierwsza wiadomość | Koszt | Twój czas | Możesz odejść? |
 |---|---|---|---|---|---|
-| 1 | ClaudeEXPERT (samo) | `Wykonaj migration-kit/PROMPT-ANALIZA-I-PLAN-v2.md dla repozytorium asktheages1/<nazwa>.` | 25–40 USD | ok. 5 min: po ok. 20 min napisz „jestem”, odpowiedz na 2 pytania zbiorcze; na końcu scal PR | po pytaniach tak |
+| 1 | ClaudeEXPERT (samo) | `Wykonaj migration-kit/PROMPT-ANALIZA-I-PLAN-v2.md dla repozytorium asktheages1/<nazwa>.` | ok. 25–40 USD | ok. 5 min: po ok. 20 min napisz „jestem”, odpowiedz na 2 pytania zbiorcze; na końcu scal PR | po pytaniach tak |
 | 2 | projekt (samo) | `Wykonaj MIGRACJA/PROMPT-ETAP-A-v2.md od kroku 1.` | 18–25 USD | 1 min | od razu |
 | 3 | projekt (samo) | `Wykonaj MIGRACJA/PROMPT-ETAP-B-v2.md od kroku 1.` | 110–150 USD* | ok. 5 min: przejrzyj 3 linie próbki po ok. 20 min | po próbce tak |
 | — | projekt (samo), gdy sesja wypisze „przegląd zaległy” | `/przeglad` | 3–8 USD | 1 min | od razu |
@@ -36,7 +36,7 @@ ClaudeEXPERT (folder `migration-kit/`) — patrz `ZMIANY-v5.md` §4.
 W pierwszej wiadomości napisz:
 1. cel jednym zdaniem i dla kogo jest wynik;
 2. co jest w zakresie, a czego nie dotykać (np. „tylko moje aplikacje z Claude”);
-3. limity: budżet w USD, liczba agentów, język plików;
+3. limity, jeśli jakieś chcesz (np. liczba agentów), i język plików;
 4. „recenzja kończy się, gdy runda nie znajdzie nic ważnego; trzecia runda tylko za moją zgodą; każda recenzja mówi
    też, co wyciąć”;
 5. „pytania zbierz na początek albo na koniec, nie w trakcie”.
