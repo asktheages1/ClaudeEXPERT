@@ -1,0 +1,45 @@
+# S3 — Update: skill `/kb-update`, run once to catch up (changelog, new pages, model scope) [G2]
+
+Read `docs/prompts/COMMON.md` in full, then this prompt in full, before any other action.
+
+## Goal
+A repeatable update procedure exists as skill `.claude/skills/kb-update/SKILL.md`, and this session runs it on the whole backlog: every Claude Code changelog bullet since `As of:` gets a decision; facts that changed are replaced in place; the pages that appeared since the snapshot and matter to the owner are digested; content about models the owner never uses is removed; `As of:` moves to the current version. S5's weekly Routine runs the same skill.
+
+## Read in full
+- `CLAUDE.md`, `STATUS.md`, `knowledge/CLAUDE.md`, `knowledge/docs-index.md` (its live-lookup and verification sections are the method), `knowledge/recheck-and-conflicts.md`
+- `docs/import/FINDINGS-claudeexpert.md` (2026-10-08 and 2026-10-11 entries are inputs to step 5)
+
+## The skill (write it first; this session then follows it)
+`.claude/skills/kb-update/SKILL.md`, `description` says when to run it (weekly Routine; `KB: STALE` at start; owner's request). Steps:
+1. `claude --version`; `As of:` from `knowledge/CLAUDE.md`. `curl -sL https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md` → `$SCRATCH/CHANGELOG.md` (403 = policy: stop, report, no retry); sections newer than `As of:` → numbered bullets, count per version. Bullets already in the base (`grep -rn '\[CL 2\.1\.<v>' knowledge/`) are `already-in-kb`.
+2. `curl -sL https://code.claude.com/docs/llms.txt` and `https://platform.claude.com/llms.txt`; links not present in `knowledge/docs-index.md` = candidate pages. Relevant = Claude Code, the cloud, hooks/permissions/agents/skills/plugins/MCP/scheduling, prompting or model facts for Opus 5.5 and Fable 5.1. Not relevant: enterprise gateways, Bedrock/Vertex, desktop/IDE UI, API-only features (owner works in Claude Code, not on the API). Each candidate: relevant + target file, or not relevant + reason (`$SCRATCH/pages.tsv`).
+3. Triage: ≤ ~100 bullets → you; more → triage agents, one per ~100 bullets, max 4 (`general-purpose`, `opus`, `high`; prompt below). Output: `$SCRATCH/triage.tsv`, not committed (the base keeps facts, not worklists); its summary (counts per version and per target) goes to `recheck-and-conflicts.md`. Columns: version, bullet_no, text, target_file | irrelevant | already-in-kb, replaces (quoted old line or empty), reason. `tools/triage_check.py`: row count = bullet count; target ∈ topic files ∪ {irrelevant, already-in-kb}; reason non-empty; no duplicate (version, bullet_no).
+4. Edit: rows and relevant pages grouped by target file. Few edits (≤ ~30 rows and ≤ ~5 pages) → you; more → editor agents, one owner per file (pairs below). Rule for every edit: a changed fact **replaces** the old line in place, tag `[CL <version>, <date>]` or `[SOURCE: <url>, <date>]`; a new fact = one bullet in the matching section, tagged; never an untagged bullet, never a contradiction left next to an old fact; no tutorials, only facts that change a decision. A file reaching ≥ 90 % of 28,000 B: split per `/dostawa` and fix the map.
+5. Model scope: remove lines, table rows and clauses about models other than Opus 5.5 and Fable 5.1 (`grep -niE 'sonnet|haiku|mythos|opus 4|opus 5([^.]|$)|fable 5([^.]|$)' knowledge/*.md`), except: (i) a trap that bites an Opus/Fable user (e.g. `claude -p` without `--model` runs on Sonnet 5.5; Haiku generates titles and judges `/goal`); (ii) a measurement that justifies using Opus/Fable over another model; (iii) advice for Opus 5 / Fable 5 that the base marks as the only basis for an Opus 5.5 / Fable 5.1 rule. Every kept line is listed in the reply with (i)/(ii)/(iii). Drop the conflicts "Sonnet 5.5 default effort" and "Haiku 4.5 retirement" from the map (out of scope).
+6. `As of: Claude Code <current> (<today, YYYY-MM-DD>)` in the map and in each edited file's header; `recheck-and-conflicts.md` gets one line per version (bullet count, date); `docs-index.md` gets a row (status ✅/❌, date) per fetched page; map sizes updated; `doc_check`; commit and push the branch. Merging is not part of the skill: an attended session finishes with `/dostawa`; the weekly Routine stops after the push (S5).
+
+## This session's run
+- **Delta boxes first, by you** (one-time): every item of the "Deltas vs …" sections in `recheck-and-conflicts.md` becomes a triage row (version `box`, target = the owning file) and every "New URLs for O1" entry (in `recheck-and-conflicts.md` and `docs-index.md`) a candidate page (step 2); then delete those sections.
+- Agents (approved with the plan): triage agents per step 3 (expected 4: ≥ 372 bullets for 2.1.292–2.1.296 alone [MEASURED 2026-10-11, findings]); **6 editors in one message** (`general-purpose`, `opus`, `high`), each owning these files and the pages that target them:
+  1. `hooks.md` — `hooks`, `hooks-guide`
+  2. `permissions-settings-automode.md`, `cloud-environment.md` — `sandbox-environments`, `security-guidance`, `server-managed-settings`, `settings-example`, `debug-your-config`, `remote-control`, `channels-reference`
+  3. `agents-and-workflows.md`, `headless-sdk-ci.md` — `routines`, `scheduled-tasks`, `desktop-scheduled-tasks` (S5 depends on these)
+  4. `context-window-and-read.md`, `instructions-memory-skills.md` — `checkpointing`, `large-codebases`; `troubleshooting` goes to you and is routed per fact
+  5. `models-effort-cost.md`, `prompting-and-model-weaknesses.md` — PL `prompting-claude-fable-5-1`, `model-ids-and-versions`, `choosing-a-model`; plus the model-scope pass (step 5) on these two files
+  6. `mcp-and-plugins.md` — `plugins/mods/*`, `plugins/manifest-reference`, `plugins/loading`, `plugins/relevance`
+  Pages that step 2 adds go to the owning editor; a page whose file is in no package goes to you. You own `docs-index.md`, `recheck-and-conflicts.md`, `design-rules.md`, the map, and the model-scope pass on files outside package 5.
+- Triage agent prompt: "Read in full: `$SCRATCH/changelog-group-<n>.md`, `knowledge/CLAUDE.md`. For each bullet decide target / irrelevant / already-in-kb per these rules: <step 1 list and step 3 relevance: changes a limit, default, flag, event, field, precedence, cloud behaviour or a model, for Opus 5.5 / Fable 5.1 users of Claude Code and the cloud>. When a bullet replaces a fact, grep the target file and quote the old line. Write `$SCRATCH/triage-<n>.tsv` (columns of step 3). No bullet skipped; every row has a reason. Report row count and the three rows you are least sure of. Edit nothing else."
+- Editor prompt: "Read in full: `$SCRATCH/package-<n>.md` (your rows, your page URLs, the edit rule of step 4, the tag legend), then your knowledge file(s). Apply every row; fetch each page with `curl -sL -o $SCRATCH/pages/<slug>.md <url>.md` (403: record, continue; 404: find the new URL via `llms.txt`), read it in full (Read; > 25,000 tokens in parts, say so), extract only decision-changing facts. [Package 5: also step 5, and list every kept line naming another model with (i)/(ii)/(iii).] Edit only your file(s); stay under 28,000 B or stop and propose a split. Write `$SCRATCH/report-<n>.md`: rows applied, rows not applied and why, per page HTTP code and facts added/replaced, lines removed for model scope."
+- Your own edits after the editors: promote from `docs/import/FINDINGS-claudeexpert.md` the measured facts not yet in the base (2026-10-11: truncated `cat`, `file_unchanged` stub, `prompt_id` sharing, SubagentStart injection, stdout without final newline, narrow push handler; 2026-10-08: Agent `effort` parameter, Haiku 5.5 — model scope applies) into `hooks.md` / `context-window-and-read.md` / `agents-and-workflows.md` with their tags verbatim. Check three replaced facts yourself against the changelog text (old line, new line, bullet) and put them in the reply.
+- **Reviewer** (`reviewer`, `opus`, `high`): reads `$SCRATCH/triage.tsv`, the editors' reports, two edited files in full and the source text for 10 changed facts of its choice (changelog sections, fetched pages in `$SCRATCH/pages/`). (a) = a fact that contradicts its source, an untagged new bullet, an old fact left beside its replacement, a removed line that was a trap; (b) = failing done-criteria.
+- `/dostawa`. `STATUS.md` "Next task": `docs/prompts/S4-read-gates.md`.
+
+## Done when
+```
+python3 tools/triage_check.py "$SCRATCH/triage.tsv" ; echo exit=$?
+grep -rn "Deltas vs\|New URLs for O1" knowledge/ | wc -l         # 0 (the boxes are drained into their files)
+grep -c "As of: Claude Code $(claude --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')" knowledge/CLAUDE.md   # 1
+python3 tools/doc_check.py ; echo exit=$?
+bash tools/tests.sh ; echo exit=$?
+```
+plus the kept model lines with (i)/(ii)/(iii) and the three self-checked facts.
