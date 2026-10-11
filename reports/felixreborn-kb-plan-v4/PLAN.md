@@ -13,8 +13,17 @@ Everything below serves at least one goal, named in brackets. Anything that serv
 - Model scope: content about models the owner never uses is removed. Only Opus 5.5 and Fable 5.1 stay, plus traps that bite a user of those two (e.g. `claude -p` without `--model` runs on Sonnet 5.5, O0 §5 [MEASURED]).
 - Agents get the map at start **and** a read gate at their end.
 - Structure check: the Foldery solution, ported (§3). No GitHub Actions. Claude merges into `main` itself, locally (`merge` + `git push origin main`), so the push gate has something to guard.
-- Reviews: one reviewer, Opus 5.5 high, read-only. It reports only factual errors and unmet done-criteria; nothing else is fixed or backlogged.
+- Reviews: one reviewer, Opus 5.5 high, read-only. It reports only factual errors and unmet done-criteria.
 - Two maps: `MAPA.md` §1 for project docs, `knowledge/CLAUDE.md` for the base. Each file appears in exactly one of them.
+- `CLAUDE.md` cap is 40 KB, not 20 KB. No rule makes a session delete or shorten content to stay under a cap. A file over its cap is split (the owner's split rule). `CLAUDE.md` is never split: at ≥ 90 % the owner is told. A file that cannot be split (the base map) over its cap: stop and tell the owner.
+
+### 2a. Original wording (Polish, verbatim; for `docs/OWNER-RULES.md`, skeleton l. 19)
+- Plan A–D (layout, migration O0–O5 → topic files ≤ 28 KB, sessions S1–S5, cuts): „Tak.”
+- Model scope: „To byl moj wymóg - zbedne i niepotrzebne informacje o modelach ktorych nigdy nie uzywam.”
+- Agents: „Mapa + bramka”.
+- Structure check: „przenieś rozwiązanie z repo asktheages1/foldery (działa w praktyce). […] 1) Checker = jeden skrypt Python bez zależności. Limity w bajtach UTF-8 per typ pliku w jednej funkcji. Powyżej 100% = błąd (exit 1), 90–100% = OSTRZEŻENIE bez blokady. 2) Każdy plik dokumentacji ma wpis w mapie z adnotacją „(N KB)”; checker porównuje ją z rzeczywistym rozmiarem (tolerancja max(10%, 1 KB)). Rozmiary tylko w mapie, nigdzie indziej. Brak pliku w mapie = błąd. 3) Hook PreToolUse blokuje WYŁĄCZNIE git push na main, gdy checker jest czerwony. Push gałęzi roboczych zawsze przechodzi, bez wyjątków wip/*. 4) Checker jest w zestawie testów i w procedurze końca pracy. Ostrzeżenie ≥90% przy pliku zmienionym w sesji → podział w tej samej sesji (nazwa-1.md / nazwa-2.md po nagłówku blisko połowy, poprawa odsyłaczy i mapy). 5) Bez GitHub Actions (limit minut). Scalanie z main robisz lokalnie (merge + git push origin main), żeby hook miał co pilnować.”
+- Reviewer: „Rekomendowane - recenzent opus 5.5 high”.
+- `CLAUDE.md` cap: „limit to 40 kb . I zadnego "tyle usunac co dodalo"”.
 
 ## 3. Structure check (ported from `asktheages1/foldery`: `GaleriaFolderow/tools/doc_check.py`, `.claude/hooks/hooks.py`, skill `/dostawa`) [G3, protects G1–G2]
 - **`tools/doc_check.py`**: one Python file, standard library only. Exit 1 on any error, 0 otherwise. Warnings never block.
@@ -22,15 +31,13 @@ Everything below serves at least one goal, named in brackets. Anything that serv
 
     | File | Cap (B) | Reason |
     |---|---|---|
-    | `CLAUDE.md` | 20,000 (HTML comments stripped) | skeleton l. 38. At ≥ 90 %: tell the owner, never split |
+    | `CLAUDE.md` | 40,000 (HTML comments stripped) | owner, 2026-10-11 (the skeleton's l. 38 said 20 KB; S1 corrects that line). At ≥ 90 %: tell the owner, never split |
     | `knowledge/*.md` except the map | 28,000 | must be readable whole with `cat`: Bash shows ≤ ~30,000 chars inline, above that a 2 KB preview (`reports/probes-2026-10-11.md` P0, R0 [MEASURED, n=2]) |
     | `knowledge/O[0-5]-*.md` (until S2 removes them) | 40,000 | their own header budget (O0 header) |
-    | `knowledge/CLAUDE.md` (base map) | 6,500 | injected into every agent together with `agent-rules.md`. Per-field limit is 10,000 chars, overflow becomes a 2,000-char preview (O2 §A6 [S:hooks]) |
-    | `.claude/agent-rules.md` | 2,500 | same injection |
-    | `MAPA.md`, `docs/**/*.md` | 28,000 | read whole with `cat` |
+    | `MAPA.md`, `docs/**/*.md` | 40,000 | skeleton l. 38, Foldery |
     | `STATUS.md` | 6,000 | skeleton l. 38 |
 
-  - Combined injection (`agent-rules.md` + map without HTML comments) > 9,000 B = error.
+  - Combined injection (`agent-rules.md` + `knowledge/CLAUDE.md` without HTML comments) > 9,000 B = error; no separate caps for the two files. Source: Foldery checks `agent-rules.md` ≤ 9,000; the per-field limit is 10,000 chars, overflow becomes a 2,000-char preview (O2 §A6 [S:hooks]). Over it: stop and tell the owner (the map cannot be split).
   - Maps:
     - Every `knowledge/*.md` except the map has a line in `knowledge/CLAUDE.md`. Every `docs/**/*.md` has a row in `MAPA.md` §1 (`docs/import/` included).
     - First mention carries the size `(N KB)`, checked against the real size with tolerance max(10 %, 1 KB).
@@ -41,13 +48,11 @@ Everything below serves at least one goal, named in brackets. Anything that serv
   - `--self-test`: one passing and one failing fixture per rule (`tests/doc_check/`).
 - **Push gate** (`.claude/hooks/hooks.py bash`, PreToolUse matcher `Bash`, timeout 120):
   - Blocks (exit 2) a `git push` that targets `main` while `doc_check.py` is red. Branch pushes pass, unless the hook itself crashes or times out (fail-closed applies to every `git push`).
-  - **Needs the owner's confirmation**: three Foldery rules below also refuse a push to `main` when the checker is green, because the checker would otherwise check something other than what is pushed (push combined with `checkout`/`merge` in one call; a ref other than `HEAD`; uncommitted tracked changes). `/dostawa` always satisfies them.
+  - **Not built unless the owner confirms** (question open since 2026-10-11): three Foldery rules also refuse a push to `main` when the checker is green, because the checker would otherwise check something other than what is pushed (push combined with `checkout`/`merge` in one call; a ref other than `HEAD`; uncommitted tracked changes). `/dostawa` always satisfies them.
   - Ported from Foldery `hooks.py`, unchanged:
     - command parser (`segments`, `strip_wrappers`, `git_sub`; covers `git -C`, `env`, `timeout`, `cd`);
     - main-target detection (refspec, `HEAD` on `main`, `checkout main` in the same call);
-    - "push to `main` is a separate Bash call";
-    - "push `HEAD` only";
-    - "clean tracked tree";
+    - only with the owner's yes: "push to `main` is a separate Bash call", "push `HEAD` only", "clean tracked tree";
     - fail-closed on its own exception;
     - 100 s deadline.
   - Not ported (owner: "only this block"):
@@ -134,23 +139,23 @@ Cost [ASSUMPTION; list prices; scale from `findings.md` 2026-10-08, 3.6–8.1 US
 - **≈ 40–90 USD** in total; Routine 1–5 USD per week.
 
 ## 8. FelixReborn `CLAUDE.md`: what each session changes
-The file is 17,986 B (CRLF), just under the 90 % warning of its 20 KB cap. Net growth is not possible. Every session's edit removes at least as much as it adds and runs `doc_check` (≥ 90 % → told to the owner in the reply). Edits go through the auto-mode classifier (may refuse: §3 fallback). Line numbers refer to the input file.
+Line numbers refer to the input file `claude-felixReborn-input.md`. The file is 17,986 B, 45 % of its 40 KB cap: sessions add what their changes need; no session shrinks the file to make room. Edits go through the auto-mode classifier, which may refuse (§3 fallback).
 
 | Line | Session | Change |
 |---|---|---|
 | 5 | S1 | "the owner has merged the PR" → "the work is merged into `main` by `/dostawa` with the push gate green" (merge policy A, owner 2026-10-11) |
-| 7 | S1 | add: mechanisms that must run (hooks, settings, checker) live at the repository root, the only place Claude Code loads them (O0 §4); promotion to `Gotowe/` is outside the KB plan |
-| 22–24 | S1 | SessionStart line describes the real hook. "markdown ≤ 40 KB fits one Read" → "≤ 28 KB: read whole with Read or exactly `cat <path>`". `<docs>` → `docs/`. `<kb>/O0-…` → `knowledge/CLAUDE.md` (auto-loads on first touch of `knowledge/`) |
-| 30 | S1 | reviewer: "Fix or reject every finding with evidence; style findings are ignored" → "report only factual errors and unmet done-criteria; everything else is ignored, not backlogged" (owner 2026-10-11) |
-| 38 | S1 | caps → the §3 table; `doc_check` → `tools/doc_check.py`; 90 % rule and split procedure → `/dostawa` |
+| 7 | S1 | add: mechanisms that must run (hooks, settings, checker) live at the repository root, the only place Claude Code loads them (O0 §4) |
+| 22–24 | S1 | SessionStart line describes the real hook. "markdown ≤ 40 KB fits one Read" stays; add: "`cat` shows a file whole only up to ~28 KB; larger files: the Read tool". `<docs>` → `docs/`. `<kb>/O0-…` → `knowledge/CLAUDE.md` (auto-loads on first touch of `knowledge/`) |
+| 30 | S1 | reviewer: "Fix or reject every finding with evidence; style findings are ignored" → "report only factual errors and unmet done-criteria" (owner 2026-10-11) |
+| 38 | S1 | caps → the §3 table (this file 40 KB, owner 2026-10-11); `doc_check` → `tools/doc_check.py`; 90 % rule and split procedure → `/dostawa` |
 | 44 | S1 | conditional "If a SubagentStart hook injects …" → measured statement, workflow agents excepted |
 | 53, 55 | S1 | merge policy A filled in (`/dostawa`). Next step A: "the next task is the „Next task” line of `STATUS.md`; for the KB plan it names `docs/prompts/<Sn>.md`" |
 | 48 | S1 | `.claude/agents/implementer.md` → plain text "an implementer agent (not built yet)", otherwise the dead-path rule is red |
-| 64–65 | S1 | hard list = only what is live: push to `main` blocked while `doc_check` is red. Placeholders for unbuilt gates removed. Sandbox: "no `bwrap` in the cloud [MEASURED 2026-10-11]" |
+| 64–65 | S1 | hard list = what is live: push to `main` blocked while `doc_check` is red. Placeholders for unbuilt gates stay, labelled "advice until built" (skeleton l. 6). Sandbox: "no `bwrap` in the cloud [MEASURED 2026-10-11]" |
 | 23–24, 44, 64 | S4 | read gates: one sentence each in "Start of every session", "Agents", "Enforcement and its limits" (+ what is not covered, §5) |
 | 68 | S5 | health check: freshness line at start; `/kb-update` |
 
-Not touched by the plan, and still unbacked: the `ask` rules (l. 19), the Stop reminder (l. 18), `<tests script>` beyond `tools/tests.sh`, the implementer agent (l. 48, de-linked in S1), `/<health-check>` (l. 68), force-push / frozen-dir / MCP denials (l. 64 placeholders, removed in S1 as not live).
+Not touched by the plan, and still unbacked: the `ask` rules (l. 19), the Stop reminder (l. 18), `<tests script>` beyond `tools/tests.sh`, the implementer agent (l. 48, de-linked in S1), `/<health-check>` (l. 68), force-push / frozen-dir / MCP denials (l. 64 placeholders, labelled as advice in S1).
 
 ## 9. Cut, not deferred
 - Trusted CI (`pull_request_target`), the "gate files changed" job, GitHub Actions in general.
