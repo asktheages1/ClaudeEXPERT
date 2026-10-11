@@ -22,6 +22,7 @@ Everything below serves at least one goal, named in brackets. Anything that serv
 - The three extra push refusals (§3) are built.
 - Coverage pass: new session S3b after S3 (§6). Every relevant documentation page is read in full and compared with the base; missing facts go into the topic files, which are under the read gate (S4). The plan now has 6 session prompts.
 - Inputs reach FelixReborn by the owner's upload (§10); sessions read no other repository or branch. Any refused access: stop and tell the owner (COMMON "Access").
+- `knowledge/O0`: the owner's uploaded version (2026-10-10 content, budget 50 KB) wins over ClaudeEXPERT's, line endings normalised to LF. The ClaudeEXPERT lines it lacks (2.1.292–2.1.293, 2026-10-08) go to `docs/import/O0-claudeexpert-delta-2026-10-12.md`; S3 promotes them. Owner: „Aktualniejsze o0 wygrywa”.
 - Original wording (Polish, verbatim): „Dopisać A.” · „a - tak, b - tak, c- tak” · „Jezeli ma korzystac z innych galezi w jakims celu to MUSZA byc w promptach zgody na odczyt itd. !!! jezeli nie udalo sie w takiej sytuacji uzyskac dostepu TO ZATRZYMUJE DZIALANIE I O TYM INFORMUJE ZAWSZE!!!”
 
 ### 2a. Original wording (Polish, verbatim; for `docs/OWNER-RULES.md`, skeleton l. 19)
@@ -40,7 +41,8 @@ Everything below serves at least one goal, named in brackets. Anything that serv
     |---|---|---|
     | `CLAUDE.md` | 40,000 (HTML comments stripped) | owner, 2026-10-11 (the skeleton's l. 38 said 20 KB; S1 corrects that line). At ≥ 90 %: tell the owner, never split |
     | `knowledge/*.md` except the map | 28,000 | must be readable whole with `cat`: Bash shows ≤ ~30,000 chars inline, above that a 2 KB preview (`reports/probes-2026-10-11.md` P0, R0 [MEASURED, n=2]) |
-    | `knowledge/O[0-5]-*.md` (until S2 removes them) | 40,000 | their own header budget (O0 header) |
+    | `knowledge/O0-how-claude-works.md` (until S2 removes it) | 50,000 | its own header budget (owner, 2026-10-10; the owner's O0 is the one used, §2b) |
+    | `knowledge/O[1-5]-*.md` (until S2 removes them) | 40,000 | their own header budget |
     | `MAPA.md`, `docs/**/*.md` | 40,000 | skeleton l. 38, Foldery |
     | `STATUS.md` | 6,000 | skeleton l. 38 |
 
@@ -58,11 +60,15 @@ Everything below serves at least one goal, named in brackets. Anything that serv
   - Three Foldery rules also refuse a push to `main` when the checker is green, because the checker would otherwise check something other than what is pushed: push combined with `checkout`/`merge`/`fetch` etc. in one call; a ref other than `HEAD`; uncommitted tracked changes. Built (owner, 2026-10-12). `/dostawa` always satisfies them.
   - Ported from Foldery `hooks.py`, unchanged:
     - command parser (`segments`, `strip_wrappers`, `git_sub`; covers `git -C`, `env`, `timeout`, `cd`);
-    - main-target detection (refspec, `HEAD` on `main`, `checkout main` in the same call, push without refspec under `remote.*.push` / `push.default upstream|tracking|matching`);
+    - main-target detection (refspec, `HEAD` on `main`, `checkout main` in the same call);
     - "push to `main` is a separate Bash call", "push `HEAD` only", "clean tracked tree";
     - fail-closed on its own exception;
     - 100 s deadline.
-  - `--all`, `--branches`, `--mirror` and a refspec with `*` or without a source (`:x`) can update `main`. Foldery refuses them inside its force-push block, which is not ported. They count as a push to `main` here: blocked only while red. Port that recognition from Foldery `h_bash`, not the force-push refusal.
+  - Pushes whose target the hook cannot pin to a branch other than `main` count as a push to `main`, blocked only while red:
+    - `--all`, `--branches`, `--mirror`, a refspec with `*` or without a source (`:x`);
+    - a push without refspec under `remote.*.push` or `push.default upstream|tracking|matching`.
+
+    Foldery refuses all of them unconditionally: `--mirror` in its force-push block; `--all`/`--branches`, `*`/`:x` and the refspec-less config push in refusals of their own. None of those refusals is ported, because branch pushes always pass (owner rule 3, §2a). Port only the recognition from Foldery `h_bash`. A push with an explicit refspec to a branch other than `main` always passes.
   - Not ported (owner: "only this block"):
     - force-push and history-rewrite blocks;
     - Actions/`.github` checks;
@@ -87,7 +93,7 @@ Everything below serves at least one goal, named in brackets. Anything that serv
   - **Not ported:** Edit/Write helper (`ce`: no Edit/Write hook here), force-push, history rewrite, Actions/`.github`, `ask`, the STATUS/CHANGELOG diff rule, Foldery's `turn`/`stop` cases.
 
 ## 4. Maps and injection [G3]
-- `knowledge/CLAUDE.md` is a nested CLAUDE.md, so it auto-loads when any file under `knowledge/` is read with Read, or with a single-file `cat`/`head`/`tail`/`sed -n`/`grep` ([CL 2.1.293] in O0 §2; Explore included: `reports/probes-2026-10-11.md` P4 [MEASURED, n=1]).
+- `knowledge/CLAUDE.md` is a nested CLAUDE.md, so it auto-loads when any file under `knowledge/` is read with Read, or with a single-file `cat`/`head`/`tail`/`sed -n`/`grep` ([CL 2.1.293]: ClaudeEXPERT O0 §2; in FelixReborn `docs/import/O0-claudeexpert-delta-2026-10-12.md` until S3 promotes it; Explore included: `reports/probes-2026-10-11.md` P4 [MEASURED, n=1]).
 - Content:
   - what the base is; how to read it (whole file: Read, or exactly `cat <path>` for ≤ 28 KB);
   - the evidence-tag legend;
@@ -111,7 +117,7 @@ State: `.claude/kbgate/<sha1 of transcript_path>.jsonl` (gitignored), one JSON o
   - met = a `full` read of each file under this `prompt_id` without `agent_id`;
   - unmet → exit 2, stderr: "Read <file> in full (Read tool; after a compaction exactly `cat <path>`) and check your answer against it; state corrections." At most 3 blocks per `prompt_id`; then exit 0 with a `systemMessage` to the owner ("read gate gave up on <file>"). The built-in cap is 8 consecutive blocks (O2 §A5 [S:hooks-guide]).
   - Do **not** exit early on `stop_hook_active` (the KB's example in O2 §A8 does, which would make this a one-shot gate). The per-`prompt_id` counter (and per-`agent_id` below) is the cap.
-  - "Per prompt" is what G1 means: every topical question triggers a fresh read. A repeated Read of an unchanged file costs only the stub's tokens (P3); after compaction the content must really come back (Read with content or `cat`). [ASSUMPTION: whether the stub persists after compaction and whether PostCompact fires on auto-compaction are not measured; fixtures only.]
+  - "Per prompt" is what G1 means: every topical question triggers a fresh read. A repeated Read of an unchanged file costs only the stub's tokens (P3); after compaction the content must really come back (Read with content or `cat`). [ASSUMPTION: whether the stub persists after compaction and whether PostCompact fires on auto-compaction are not measured; test cases only.]
 - **SubagentStop** (agents):
   - gated agent types: `general-purpose` and agents defined in `.claude/agents/`; not Explore, Plan or `claude-code-guide` (navigation and planning helpers that read excerpts by design; the main session that uses their answer is gated at Stop);
   - required = keyword matches in the agent's first user message, read from `agent_transcript_path` (it held the prompt at SubagentStop: P2, R6 [MEASURED, n=2]);
@@ -147,7 +153,7 @@ One session = one prompt = one branch, merged into `main` by `/dostawa`. The nex
 
 | Session | Goal | Main window | Agents (type · model · effort) | Reviewer |
 |---|---|---|---|---|
-| S1 tooling | G3 + protection | inputs copied in; state files; `doc_check.py`; `hooks.py` (push gate, session, subagent); settings; tests; `/dostawa`; `reviewer.md`; interim map of O0–O5; `CLAUDE.md` edits | none | 1 (general-purpose · opus · high; `reviewer.md` exists only from S2, O0 §3) |
+| S1 tooling | G3 + protection | inputs verified (manifest); state files; `doc_check.py`; `hooks.py` (push gate, session, subagent); settings; tests; `/dostawa`; `reviewer.md`; interim map of O0–O5; `CLAUDE.md` edits | none | 1 (general-purpose · opus · high; `reviewer.md` exists only from S2, O0 §3) |
 | S2 migration | G3, G1 | `migration-map.tsv`, `kb_migrate.py` + check (every line exactly once, fact-ID multiset unchanged), references rewritten, O0–O5 deleted, keyword map | 2 navigation probes (1 general-purpose, 1 Explore · opus · low): 3 questions each, first `knowledge/` read checked in the transcript | 1 (`reviewer` · opus · high) |
 | S3 update | G2 | `/kb-update`, delta, triage merge and check, `docs-index.md`, `recheck-and-conflicts.md`, `design-rules.md`, map sizes, model-scope grep | triage: 1 per ~100 bullets, max 4 (general-purpose · opus · high); editors: 6, one owner per file pair, each applies its triage rows and fetches its new pages (general-purpose · opus · high) | 1 (`reviewer` · opus · high) |
 | S3b coverage | G1, G2 | page list and `coverage.tsv` + check, reader packages, applying order, map update, `docs-index.md` statuses | readers: 1 per ~5 pages or ~200k tokens of page text, ≈ 20, in waves of ≤ 10 (general-purpose · opus · high); editors: 6, S3's packages (general-purpose · opus · high) | 1 (`reviewer` · opus · high) |
@@ -195,14 +201,14 @@ Not touched by the plan, and still unbacked: the `ask` rules (l. 19), the Stop r
 - GitHub-semantics research agent; optional API-only PL pages.
 
 ## 10. Start
-1. The owner uploads the input package to FelixReborn `main`, keeping its paths. It was built from this directory and ClaudeEXPERT `main` on 2026-10-12. Contents:
-   - `knowledge/O0…O5` from ClaudeEXPERT `main`, LF line endings. They replace the CRLF upload of 2026-10-12, whose O0 differs in content (`findings.md` 2026-10-12).
+1. The owner uploads the input package to FelixReborn `main`, keeping its paths. Upload the extracted files unchanged: do not open or save them in an editor first. S1 checks every byte against the manifest, and a re-saved file (e.g. CRLF) stops it. The package was built from this directory and ClaudeEXPERT branch `claude/vibrant-albattani-j4qqjv` on 2026-10-12. Contents:
+   - `knowledge/O0…O5`, LF line endings. They replace the CRLF upload of 2026-10-12. O0 = the owner's uploaded content (§2b); O1–O5 = ClaudeEXPERT, the same content as the upload.
    - `docs/prompts/`: this plan with a "Paths:" line, COMMON, S1–S5, S3b, `claude-felixReborn-input.md`.
    - `docs/import/`:
      - `FINDINGS-claudeexpert.md` (`findings.md`, probe paths rewritten);
      - `probes-2026-10-11.md`;
      - `claudeexpert-tags-and-conflicts.md` (the "Evidence tags" and "Known open conflicts" sections of ClaudeEXPERT `CLAUDE.md`, verbatim);
-     - `O0-upload-delta-2026-10-12.md` (the lines only the owner's uploaded O0 had; S3 promotes them);
+     - `O0-claudeexpert-delta-2026-10-12.md` (the ClaudeEXPERT O0 lines the owner's O0 lacks; S3 promotes them);
      - `foldery/` (Foldery `doc_check.py`, `hooks.py`, `test_hooks.sh`, `settings.json` and `/dostawa` as `dostawa-SKILL.md`, at ec7ce87);
      - `MANIFEST.sha256` (checksums of every file above).
 2. The owner renames FelixReborn's `claude.md.md` to `CLAUDE.md`. Claude Code loads only that name (`findings.md` 2026-10-12 [MEASURED]).

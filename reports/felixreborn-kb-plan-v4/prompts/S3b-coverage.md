@@ -8,9 +8,12 @@ S3 read only the pages the base never mentioned and applied the changelog. Pages
 ## Read in full
 - `CLAUDE.md`, `STATUS.md`, `knowledge/CLAUDE.md`, `knowledge/docs-index.md`, `.claude/skills/kb-update/SKILL.md` (S3's relevance rule and edit rule, steps 2 and 4)
 - `docs/kb-updates/*-triage.tsv` (S3's record: which pages S3 read)
+## Read in part (say so)
+- `docs/prompts/S3-update.md`: section "This session's run", the six editor packages.
+- `docs/prompts/S2-migration.md`: step 5 (keyword rule of the map).
 
 ## Steps
-1. **Page list.** `curl -sL https://code.claude.com/docs/llms.txt` and `https://platform.claude.com/llms.txt` (COMMON "Access"; 403: stop). Write `docs/kb-updates/<YYYY-MM-DD>-coverage.tsv`, one row per link of both indexes. Columns:
+1. **Page list.** `curl -sL https://code.claude.com/docs/llms.txt -o docs/kb-updates/<YYYY-MM-DD>-llms-code.txt` and `curl -sL https://platform.claude.com/llms.txt -o docs/kb-updates/<YYYY-MM-DD>-llms-platform.txt` (COMMON "Access"; 403: stop; both files are committed, they are the check's input). Write `docs/kb-updates/<YYYY-MM-DD>-coverage.tsv`, one row per link of both indexes. Columns:
    - `url`;
    - `relevant` (yes/no, S3's relevance rule; the owner's model scope applies);
    - `reason`;
@@ -52,7 +55,7 @@ S3 read only the pages the base never mentioned and applied the changelog. Pages
 
 ## Done when
 ```
-python3 tools/coverage_check.py docs/kb-updates/*-coverage.tsv ; echo exit=$?
+python3 tools/coverage_check.py docs/kb-updates/*-coverage.tsv docs/kb-updates/*-llms-code.txt docs/kb-updates/*-llms-platform.txt ; echo exit=$?
 grep -c $'\tS3b\t' docs/kb-updates/*-coverage.tsv          # = number of pages read here
 grep -c 'failed: 40[13]' docs/kb-updates/*-coverage.tsv    # 0 (a refusal stops the session instead)
 python3 tools/doc_check.py ; echo exit=$?

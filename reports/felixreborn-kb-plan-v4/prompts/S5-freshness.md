@@ -6,10 +6,8 @@ Read `docs/prompts/COMMON.md` in full, then this prompt in full, before any othe
 Every session start says whether the base is behind Claude Code; once a week a scheduled cloud session runs `/kb-update` on a fixed branch and stops before merging, so unattended edits wait for the owner or the next attended session.
 
 ## Read in full
-- `CLAUDE.md`, `STATUS.md`, `knowledge/CLAUDE.md`, `.claude/skills/kb-update/SKILL.md`
+- `CLAUDE.md`, `STATUS.md`, `knowledge/CLAUDE.md`, `.claude/skills/kb-update/SKILL.md`, `.claude/hooks/hooks.py` (you change it; `CLAUDE.md` l. 14)
 - `knowledge/headless-sdk-ci.md` (Routines, scheduled tasks — digested in S3; if the Routine facts are missing there, stop and report: the design depends on them)
-## Read in part (say so)
-- `.claude/hooks/hooks.py`: `h_session` and `HANDLERS`.
 
 ## Steps
 `.claude/hooks/hooks.py` is live in this session. Change it as a copy, `$SCRATCH/hooks.py`: `bash tools/test_hooks.sh "$SCRATCH/hooks.py"` green, then copy it over the live file (PLAN §3 "Hook tests").
