@@ -57,9 +57,21 @@ Szkielet jest dobry i zgodny z bazą w ~90 %: sekcja „Enforcement and its limi
 
 **Health check** (l. 68): dopisek z tabeli.
 
+## 3a. Uzupełnienia po recenzjach promptów (2026-10-11)
+- Linia 15 („Work only inside this repository … plus the session scratchpad"): prompty trzymają tymczasowe checkouty i zdalne repozytorium testowe w scratchpadzie sesji, nie w `/tmp` — zgodne z linią, bez zmiany.
+- Linia 18 (format odpowiedzi): obowiązuje; COMMON §5 jest jej podzbiorem.
+- Linia 30 (`reviewer.md`): do S05 nie istnieje; para recenzentów z COMMON §4 (general-purpose z Bash) go zastępuje, a po S05 `reviewer.md` służy do przeglądu zmian kodu, nie do końcowej recenzji sesji (musi uruchamiać komendy).
+- Linia 45 (progi w USD i zgoda na kilku agentów): bez decyzji właściciela dosłowne okno zatrzyma się przed każdą sesją z agentami, czekając na zgodę, a w chmurze oczekiwanie = bezczynność. Stąd warunek wstępny S00: dwie datowane decyzje w `docs/OWNER-RULES.md` (układ; agenci z promptu sesji są z góry zatwierdzeni, limit 15).
+- `knowledge/FINDINGS-claudeexpert.md` nie może leżeć w `knowledge/` (strażnik uznałby go za plik treści: brak `As of:`, nazwy Haiku/Sonnet, brak tematu) → `docs/import/`.
+- Lista „Known open conflicts" i legenda znaczników z CLAUDE.md tego repo nie trafiają do FelixReborn z samą kopią `knowledge/`: S01 importuje listę dosłownie (tekst jest w prompcie), COMMON §3 niesie legendę.
+
 ## 4. Rzeczy do decyzji właściciela przed S00
 
 1. Układ repo: `knowledge/` i `tools/` w korzeniu, `Gotowe/` generowane skryptem (§1 pkt 2). Rekomendacja: tak; inaczej hooki i mapa nie zadziałają.
 2. Czy `knowledge/` (ok. 140 KB) jest częścią szablonu kopiowanego do innych projektów, czy do innych projektów idzie tylko `design-rules.md` + mapa? Rekomendacja: całość do projektów, w których Claude projektuje mechanizmy (hooki, agenci); do zwykłych projektów tylko `design-rules.md` i `knowledge/CLAUDE.md` z odsyłaczem. Decyzja wpływa na `export_template.py` (S00 robi parametr).
 3. Skąd `knowledge/` trafia do FelixReborn: ręczna kopia z `asktheages1/ClaudeEXPERT` (`knowledge/`, `findings.md` → `knowledge/FINDINGS-claudeexpert.md`) przed S00, czy S00 ma dołączyć to repo (`add_repo`) i skopiować. Rekomendacja: kopia ręczna (sesja z dwoma repozytoriami nie ładuje hooków, O0 §7; S00 ich jeszcze nie ma, więc technicznie można, ale prościej mieć jedno repo od początku). S00 sprawdza obecność i zatrzymuje się, jeśli brak.
 4. Placeholdery `<…>` w szkielecie (język UI, skille, model/effort, polityka merge A/B, następny krok A/B, zip): S00 nie zgaduje; prompt S00 każe wypisać listę brakujących decyzji w `STATUS.md` i w odpowiedzi.
+5. Czy FelixReborn jest publiczne (branch protection za darmo) czy prywatne (płatny plan)? S00 sprawdza to przez API i zapisuje.
+6. Zakres bramki push: blokować każdy push z czerwonym strażnikiem (ryzyko: praca uwięziona w jednorazowej VM), czy tylko push do `main`, a gałęzie ostrzegać? Domyślnie w promptach: blokada z wyjątkiem gałęzi `wip/*`.
+7. Sesje bazowe: 2–3 zwykłe sesje pytań między S11 a S12a, żeby liczba „odpowiedzi bez czytania" pochodziła z właściwej populacji? Rekomendacja: tak.
+8. Linie o Opus 5 / Fable 5 (poprzednicy; jedyna podstawa części rad dla Opus 5.5): zostają ze znacznikiem `[scope: predecessor-advice]` (rekomendacja) czy wypadają?
