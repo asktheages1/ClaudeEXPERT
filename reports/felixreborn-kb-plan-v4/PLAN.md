@@ -28,19 +28,20 @@ Everything below serves at least one goal, named in brackets. Anything that serv
     | `knowledge/CLAUDE.md` (base map) | 6,500 | injected into every agent together with `agent-rules.md`. Per-field limit is 10,000 chars, overflow becomes a 2,000-char preview (O2 §A6 [S:hooks]) |
     | `.claude/agent-rules.md` | 2,500 | same injection |
     | `MAPA.md`, `docs/**/*.md` | 28,000 | read whole with `cat` |
-    | `STATUS.md` | 6,000 | skeleton l. 35 |
+    | `STATUS.md` | 6,000 | skeleton l. 38 |
 
   - Combined injection (`agent-rules.md` + map without HTML comments) > 9,000 B = error.
   - Maps:
-    - Every `knowledge/*.md` except the map has a line in `knowledge/CLAUDE.md`. Every `docs/**/*.md` except `docs/import/**` has a row in `MAPA.md` §1.
+    - Every `knowledge/*.md` except the map has a line in `knowledge/CLAUDE.md`. Every `docs/**/*.md` has a row in `MAPA.md` §1 (`docs/import/` included).
     - First mention carries the size `(N KB)`, checked against the real size with tolerance max(10 %, 1 KB).
-    - Unmapped file = error; dead backticked path in a map or in `CLAUDE.md` = error.
-    - A size annotation `(N KB)` outside the two maps (in `CLAUDE.md`, `STATUS.md`, `knowledge/`, `docs/` except `docs/import/`) = error.
-  - `knowledge/CLAUDE.md` has a line `As of: Claude Code 2.1.<n>` [G2].
+    - Unmapped file = error. Dead path = error: a backticked path in a map or in `CLAUDE.md` that starts with `knowledge/`, `docs/`, `tools/`, `.claude/hooks/`, `.claude/skills/` or `.claude/agents/`, ends in a file extension, and does not exist. Narrower than Foldery's rule, so the skeleton's other paths (`.bat`, `_tmp/`, `~/.claude`) are not flagged.
+    - A size annotation `(N KB)` outside the two maps (in `CLAUDE.md`, `STATUS.md`, `knowledge/`, `docs/` except `docs/import/`, whose files are frozen history) = error.
+  - `knowledge/CLAUDE.md` has a line `As of: Claude Code 2.1.<n> (YYYY-MM-DD)` [G2]; the date is checked from S5.
   - From S2: every map line parses as `- <keywords> → \`<file>\` (N KB) …`. Keywords are comma-separated, case-insensitive; a trailing `*` means "prefix", for Polish stems [G1, G3: the read gate reads them].
   - `--self-test`: one passing and one failing fixture per rule (`tests/doc_check/`).
 - **Push gate** (`.claude/hooks/hooks.py bash`, PreToolUse matcher `Bash`, timeout 120):
-  - Blocks (exit 2) **only** a `git push` that targets `main` while `doc_check.py` is red. Branch pushes always pass.
+  - Blocks (exit 2) a `git push` that targets `main` while `doc_check.py` is red. Branch pushes pass, unless the hook itself crashes or times out (fail-closed applies to every `git push`).
+  - **Needs the owner's confirmation**: three Foldery rules below also refuse a push to `main` when the checker is green, because the checker would otherwise check something other than what is pushed (push combined with `checkout`/`merge` in one call; a ref other than `HEAD`; uncommitted tracked changes). `/dostawa` always satisfies them.
   - Ported from Foldery `hooks.py`, unchanged:
     - command parser (`segments`, `strip_wrappers`, `git_sub`; covers `git -C`, `env`, `timeout`, `cd`);
     - main-target detection (refspec, `HEAD` on `main`, `checkout main` in the same call);
@@ -56,7 +57,7 @@ Everything below serves at least one goal, named in brackets. Anything that serv
     - `deny` rules of Foldery `settings.json`.
   - Without `python3` (owner's PC) the `exec python3` fails with a non-2 code: the gate is off there, not blocking.
 - **End-of-work procedure**: skill `/dostawa`, port of Foldery steps 2, 4, 5:
-  1. `doc_check` → `WARNING` on a file changed in this session → split it now. Split at a `##` heading near the middle: `name-1.md` (`git mv`) + `name-2.md`, references and map fixed. `CLAUDE.md` is never split; ≥ 90 % → tell the owner.
+  1. `doc_check` → `WARNING` on a file changed in this session → split it now. Split at a `##` heading near the middle: `name-1.md` (`git mv`) + `name-2.md`, references and map fixed. `CLAUDE.md` is never split; ≥ 90 % → tell the owner (as in Foldery `/dostawa`).
   2. `tools/tests.sh` green.
   3. `STATUS.md` overwritten, `CHANGELOG.md` line.
   4. Commit named paths, push the branch.
@@ -87,13 +88,14 @@ State: `.claude/kbgate/<sha1 of transcript_path>.jsonl` (gitignored), one JSON o
 - **Stop**:
   - required = prompt matches ∪ matches in `last_assistant_message`, at most 3 files;
   - met = a `full` read of each file under this `prompt_id` without `agent_id`;
-  - unmet → exit 2, stderr: "Read <file> in full and check your answer against it; state corrections." At most 3 blocks per `prompt_id`; then exit 0 with a `systemMessage` to the owner ("read gate gave up on <file>"). The built-in cap is 8 consecutive blocks (O2 §A5 [S:hooks-guide]).
-  - "Per prompt" is what G1 means: every topical question triggers a fresh read. A repeated Read of an unchanged file costs only the stub's tokens (P3); after compaction the content must really come back (Read with content or `cat`).
+  - unmet → exit 2, stderr: "Read <file> in full (Read tool; after a compaction exactly `cat <path>`) and check your answer against it; state corrections." At most 3 blocks per `prompt_id`; then exit 0 with a `systemMessage` to the owner ("read gate gave up on <file>"). The built-in cap is 8 consecutive blocks (O2 §A5 [S:hooks-guide]).
+  - Do **not** exit early on `stop_hook_active` (the KB's example in O2 §A8 does, which would make this a one-shot gate). The per-`prompt_id` counter (and per-`agent_id` below) is the cap.
+  - "Per prompt" is what G1 means: every topical question triggers a fresh read. A repeated Read of an unchanged file costs only the stub's tokens (P3); after compaction the content must really come back (Read with content or `cat`). [ASSUMPTION: whether the stub persists after compaction and whether PostCompact fires on auto-compaction are not measured; fixtures only.]
 - **SubagentStop** (agents):
-  - gated agent types: `general-purpose` and agents defined in `.claude/agents/`; not Explore, Plan or `claude-code-guide`;
+  - gated agent types: `general-purpose` and agents defined in `.claude/agents/`; not Explore, Plan or `claude-code-guide` (navigation and planning helpers that read excerpts by design; the main session that uses their answer is gated at Stop);
   - required = keyword matches in the agent's first user message, read from `agent_transcript_path` (it held the prompt at SubagentStop: P2, R6 [MEASURED, n=2]);
   - met = `full` reads logged with that `agent_id` (subagent events carry `agent_id`: P1 [MEASURED]);
-  - unmet → exit 2 with the same message; at most 2 blocks per `agent_id`. The SubagentStop block cap is undocumented, so the plan uses its own counter.
+  - unmet → exit 2 with the same message; at most 2 blocks per `agent_id`. The SubagentStop block cap is undocumented, so the plan uses its own counter. Transcript missing or without a user message: retry once after 1 s, then pass with a logged warning.
 - `agent-rules.md` tells agents the same rule up front, so the gate is a backstop, not a surprise.
 - Not covered (written into `CLAUDE.md` "Enforcement and its limits" in S4):
   - workflow agents;
@@ -104,15 +106,15 @@ State: `.claude/kbgate/<sha1 of transcript_path>.jsonl` (gitignored), one JSON o
 ## 6. Freshness [G2]
 - **S3** builds skill `/kb-update` and runs it once to catch up. Steps:
   1. Changelog delta since `As of:`.
-  2. New links in `llms.txt` since the copy stored in `knowledge/docs-index.md`.
+  2. Links in `llms.txt` not yet present in `knowledge/docs-index.md`.
   3. Triage → per-file edits (old fact replaced, never appended).
   4. Model-scope pass.
-  5. `As of:` moved.
-  6. `/dostawa`.
-- Agent use scales with the delta: up to ~100 changelog bullets and ~10 pages, the main window does it alone; above that, triage and editor agents as in S3.
+  5. `As of:` moved, with today's date.
+  6. Commit and push the branch (an attended session then runs `/dostawa`; the Routine stops here).
+- Agent use scales with the delta: triage by the main window up to ~100 bullets, above that one triage agent per ~100 bullets (max 4); edits by the main window up to ~30 rows and ~5 pages, above that editor agents as in S3.
 - **S5**:
-  - SessionStart freshness line: local `claude --version` vs `As of:` and days since `As of:` date. `KB: STALE` at ≥ 3 versions or > 30 days. No network at start.
-  - A weekly Routine (a scheduled cloud session) runs `/kb-update` on a fixed branch `kb-update`. It pushes that branch and **does not merge**: unattended KB edits wait for the next attended session or the owner.
+  - SessionStart freshness line: local `claude --version` vs `As of:` and days since the `As of:` date. `KB: STALE` at ≥ 3 versions or > 30 days. Plus `kb-update: <n> commits ahead of main` when that branch exists. No HTTP at start (the `git fetch` with timeout that the start hook already does is allowed).
+  - A weekly Routine (a scheduled cloud session) runs `/kb-update` on a fixed branch `kb-update`. It pushes that branch and **does not merge**: unattended KB edits wait for an attended session, which the start line tells about them; the Routine also sends a push notification.
 
 ## 7. Sessions and agents
 One session = one prompt = one branch, merged into `main` by `/dostawa`. The next session starts after the merge. Main window: Opus 5.5 high. The agents named in each prompt are approved with this plan (skeleton l. 45: "several agents … the owner's yes").
@@ -125,14 +127,14 @@ One session = one prompt = one branch, merged into `main` by `/dostawa`. The nex
 | S4 read gates | G1, G3 | logger, PostCompact, UserPromptSubmit, Stop, SubagentStop, fixtures, live tests in nested `claude -p` (not agents) | none outside the nested runs | 1 (`reviewer` · opus · high) |
 | S5 freshness | G2 | SessionStart line, Routine (created after the owner's yes in session), `CLAUDE.md` health-check line | none | none: advisory line + Routine spec, no constraining mechanism (skeleton l. 5 asks review of mechanisms) |
 
-Total: 13 agents + up to 4 reviewers (plan v3/v2: 70).
+Total: 12 agents + up to 4 reviewers (plan v3/v2: 70).
 
 Cost [ASSUMPTION; list prices; scale from `findings.md` 2026-10-08, 3.6–8.1 USD per heavy single-file session]:
 - S1 5–10 USD; S2 4–8; S3 25–55; S4 6–12; S5 2–4.
 - **≈ 40–90 USD** in total; Routine 1–5 USD per week.
 
 ## 8. FelixReborn `CLAUDE.md`: what each session changes
-The file is 17,986 B: 90 % of its 20 KB cap. Net growth is not possible. Every session's edit removes at least as much as it adds and runs `doc_check` (≥ 90 % → told to the owner in the reply). Edits go through the auto-mode classifier (may refuse: §3 fallback). Line numbers refer to the input file.
+The file is 17,986 B (CRLF), just under the 90 % warning of its 20 KB cap. Net growth is not possible. Every session's edit removes at least as much as it adds and runs `doc_check` (≥ 90 % → told to the owner in the reply). Edits go through the auto-mode classifier (may refuse: §3 fallback). Line numbers refer to the input file.
 
 | Line | Session | Change |
 |---|---|---|
@@ -143,11 +145,12 @@ The file is 17,986 B: 90 % of its 20 KB cap. Net growth is not possible. Every s
 | 38 | S1 | caps → the §3 table; `doc_check` → `tools/doc_check.py`; 90 % rule and split procedure → `/dostawa` |
 | 44 | S1 | conditional "If a SubagentStart hook injects …" → measured statement, workflow agents excepted |
 | 53, 55 | S1 | merge policy A filled in (`/dostawa`). Next step A: "the next task is the „Next task” line of `STATUS.md`; for the KB plan it names `docs/prompts/<Sn>.md`" |
+| 48 | S1 | `.claude/agents/implementer.md` → plain text "an implementer agent (not built yet)", otherwise the dead-path rule is red |
 | 64–65 | S1 | hard list = only what is live: push to `main` blocked while `doc_check` is red. Placeholders for unbuilt gates removed. Sandbox: "no `bwrap` in the cloud [MEASURED 2026-10-11]" |
 | 23–24, 44, 64 | S4 | read gates: one sentence each in "Start of every session", "Agents", "Enforcement and its limits" (+ what is not covered, §5) |
 | 68 | S5 | health check: freshness line at start; `/kb-update` |
 
-Not touched by the plan, and still unbacked: the `ask` rules (l. 19), the Stop reminder (l. 18), `<tests script>` beyond `tools/tests.sh`, `implementer.md` (l. 48), `/<health-check>` (l. 68), force-push / frozen-dir / MCP denials (l. 64 placeholders, removed in S1 as not live).
+Not touched by the plan, and still unbacked: the `ask` rules (l. 19), the Stop reminder (l. 18), `<tests script>` beyond `tools/tests.sh`, the implementer agent (l. 48, de-linked in S1), `/<health-check>` (l. 68), force-push / frozen-dir / MCP denials (l. 64 placeholders, removed in S1 as not live).
 
 ## 9. Cut, not deferred
 - Trusted CI (`pull_request_target`), the "gate files changed" job, GitHub Actions in general.
