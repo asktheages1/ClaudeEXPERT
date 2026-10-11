@@ -1,6 +1,6 @@
-# FelixReborn knowledge-base plan v4 (2026-10-11)
+# FelixReborn knowledge-base plan v4 (2026-10-11, amended 2026-10-12)
 
-Replaces plan v3 and the FelixReborn plan v2 with its 16 prompts (removed; in git history). Their measurements were kept in `reports/probes-2026-10-11.md`. Target repository: FelixReborn. Input: the owner's skeleton `claude-felixReborn-input.md` (this directory, verbatim).
+Replaces plan v3 and the FelixReborn plan v2 with its 16 prompts (removed; in git history). Their measurements were kept in `reports/probes-2026-10-11.md`. Target repository: FelixReborn. Input: the owner's skeleton `claude-felixReborn-input.md` (this directory, verbatim; in FelixReborn it is the root `CLAUDE.md`).
 
 ## 1. The three goals and the cut rule
 1. **G1**: Claude does not return to the knowledge base after the first message; it answers later questions from memory.
@@ -16,6 +16,13 @@ Everything below serves at least one goal, named in brackets. Anything that serv
 - Reviews: one reviewer, Opus 5.5 high, read-only. It reports only factual errors and unmet done-criteria.
 - Two maps: `MAPA.md` §1 for project docs, `knowledge/CLAUDE.md` for the base. Each file appears in exactly one of them.
 - `CLAUDE.md` cap is 40 KB, not 20 KB. No rule makes a session delete or shorten content to stay under a cap. A file over its cap is split (the owner's split rule). `CLAUDE.md` is never split: at ≥ 90 % the owner is told. A file that cannot be split (the base map) over its cap: stop and tell the owner.
+
+### 2b. Owner decisions of 2026-10-12
+- Hook tests: Foldery's `test_hooks.sh` pattern is ported in reduced form (§3 "Hook tests"); its cases are not copied.
+- The three extra push refusals (§3) are built.
+- Coverage pass: new session S3b after S3 (§6). Every relevant documentation page is read in full and compared with the base; missing facts go into the topic files, which are under the read gate (S4). The plan now has 6 session prompts.
+- Inputs reach FelixReborn by the owner's upload (§10); sessions read no other repository or branch. Any refused access: stop and tell the owner (COMMON "Access").
+- Original wording (Polish, verbatim): „Dopisać A.” · „a - tak, b - tak, c- tak” · „Jezeli ma korzystac z innych galezi w jakims celu to MUSZA byc w promptach zgody na odczyt itd. !!! jezeli nie udalo sie w takiej sytuacji uzyskac dostepu TO ZATRZYMUJE DZIALANIE I O TYM INFORMUJE ZAWSZE!!!”
 
 ### 2a. Original wording (Polish, verbatim; for `docs/OWNER-RULES.md`, skeleton l. 19)
 - Plan A–D (layout, migration O0–O5 → topic files ≤ 28 KB, sessions S1–S5, cuts): „Tak.”
@@ -47,14 +54,15 @@ Everything below serves at least one goal, named in brackets. Anything that serv
   - From S2: every map line parses as `- <keywords> → \`<file>\` (N KB) …`. Keywords are comma-separated, case-insensitive; a trailing `*` means "prefix", for Polish stems [G1, G3: the read gate reads them].
   - `--self-test`: one passing and one failing fixture per rule (`tests/doc_check/`).
 - **Push gate** (`.claude/hooks/hooks.py bash`, PreToolUse matcher `Bash`, timeout 120):
-  - Blocks (exit 2) a `git push` that targets `main` while `doc_check.py` is red. Branch pushes pass, unless the hook itself crashes or times out (fail-closed applies to every `git push`).
-  - **Not built unless the owner confirms** (question open since 2026-10-11): three Foldery rules also refuse a push to `main` when the checker is green, because the checker would otherwise check something other than what is pushed (push combined with `checkout`/`merge` in one call; a ref other than `HEAD`; uncommitted tracked changes). `/dostawa` always satisfies them.
+  - Blocks (exit 2) a `git push` that targets `main` while `doc_check.py` is red. Branch pushes pass, unless the hook itself raises an exception or hits its deadline (fail-closed applies to every `git push`). Fail-closed does not cover a `hooks.py` that does not compile: Python exits 1, a non-blocking error, and the gate is silently off (`findings.md` 2026-10-12 [MEASURED]); hence every `hooks.py` change is tested as a scratch copy before it replaces the live file (§3 "Hook tests").
+  - Three Foldery rules also refuse a push to `main` when the checker is green, because the checker would otherwise check something other than what is pushed: push combined with `checkout`/`merge`/`fetch` etc. in one call; a ref other than `HEAD`; uncommitted tracked changes. Built (owner, 2026-10-12). `/dostawa` always satisfies them.
   - Ported from Foldery `hooks.py`, unchanged:
     - command parser (`segments`, `strip_wrappers`, `git_sub`; covers `git -C`, `env`, `timeout`, `cd`);
-    - main-target detection (refspec, `HEAD` on `main`, `checkout main` in the same call);
-    - only with the owner's yes: "push to `main` is a separate Bash call", "push `HEAD` only", "clean tracked tree";
+    - main-target detection (refspec, `HEAD` on `main`, `checkout main` in the same call, push without refspec under `remote.*.push` / `push.default upstream|tracking|matching`);
+    - "push to `main` is a separate Bash call", "push `HEAD` only", "clean tracked tree";
     - fail-closed on its own exception;
     - 100 s deadline.
+  - `--all`, `--branches`, `--mirror` and a refspec with `*` or without a source (`:x`) can update `main`. Foldery refuses them inside its force-push block, which is not ported. They count as a push to `main` here: blocked only while red. Port that recognition from Foldery `h_bash`, not the force-push refusal.
   - Not ported (owner: "only this block"):
     - force-push and history-rewrite blocks;
     - Actions/`.github` checks;
@@ -68,7 +76,15 @@ Everything below serves at least one goal, named in brackets. Anything that serv
   4. Commit named paths, push the branch.
   5. Merge in three separate Bash calls: `git fetch origin main && git checkout -B main origin/main && git merge --no-edit <branch>` / `git push origin main` / `git checkout <branch>`.
   6. If the auto-mode classifier refuses (`CLAUDE.md`/`.claude/` changes: `findings.md` 2026-10-06 [MEASURED, n=2]): `git push --dry-run origin HEAD:main` (same gate, sends nothing), push the branch, open a PR, tell the owner.
-- **`tools/tests.sh`** runs `doc_check.py --self-test`, `doc_check.py` and `tools/test_hooks.sh`. `test_hooks.sh` replays fixture JSON (`tests/fixtures/*.json`, fields `_handler`, `_expect_exit`) into `hooks.py`. Push cases run against a temporary repository with a bare `origin` in the scratchpad, never GitHub.
+- **`tools/tests.sh`** runs `doc_check.py --self-test`, `doc_check.py` and `bash tools/test_hooks.sh .claude/hooks/hooks.py`.
+- **Hook tests** (`tools/test_hooks.sh`): the pattern of Foldery `GaleriaFolderow/tools/test_hooks.sh` (in FelixReborn: `docs/import/foldery/test_hooks.sh`), reduced; its cases are written for Foldery's hook and are not copied. Pattern:
+  - **Path argument:** `bash tools/test_hooks.sh <path to hooks.py>`. A change to `hooks.py` is made in a scratch copy, tested, and only then copied over the live file. Hooks act at once (O0 §4), and a broken one fails silently (above).
+  - **Isolation:** `mktemp -d` removed by `trap`; own `GIT_CONFIG_GLOBAL` with `GIT_CONFIG_NOSYSTEM=1`; `unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE`; `LC_ALL=C.UTF-8`. The hook runs as in production: `python3 -I <path> <handler>` under `timeout` (115 s for `bash`: above the 100 s deadline, below the 120 s settings timeout).
+  - **Fixture:** a local bare repository as `origin` and its clone, both in the temp directory, never GitHub. `nb <branch> <files…>` makes a branch from `origin/main` with changes in those files. Extra clones or a worktree only where a case needs them. The fixture's `tools/doc_check.py` is a stub: exit 1 when `RED=1`, else 0. The hook tests do not depend on the checker's rules; `doc_check --self-test` tests those.
+  - **Assertions:** `bash_case <name> <expected 0|2> <dir> <command> [VAR=…]` builds the PreToolUse Bash JSON with `jq`, pipes it to the hook and compares the exit code. Other events have their own helpers built the same way. Exit 2 with empty stderr is a failure (`2-without-message`): the model would not know why it was blocked. Every case prints `OK [name]` or `FAIL [name] expected X, got Y`; the end prints `RESULT: n/m`; exit ≠ 0 if any case failed.
+  - **Wrapper:** the settings command form with `hooks.py` missing → 0 (a broken checkout does not block the session); `hooks.py` with CRLF line endings gives the same results as LF.
+  - **Known limits:** bypasses the hook does not catch by design are cases expected to pass, named `limit/…`: push from a script, `sh -c`, `xargs`, `$(…)`, a git alias, `GIT_DIR` / `--git-dir`, `--delete main` (the git proxy refuses branch deletion, O0 §7). They record the boundary (`CLAUDE.md` l. 65) and fail when a hook change moves it; they are not fixes. A listed bypass that the ported hook blocks is not a limit: test it as a normal case.
+  - **Not ported:** Edit/Write helper (`ce`: no Edit/Write hook here), force-push, history rewrite, Actions/`.github`, `ask`, the STATUS/CHANGELOG diff rule, Foldery's `turn`/`stop` cases.
 
 ## 4. Maps and injection [G3]
 - `knowledge/CLAUDE.md` is a nested CLAUDE.md, so it auto-loads when any file under `knowledge/` is read with Read, or with a single-file `cat`/`head`/`tail`/`sed -n`/`grep` ([CL 2.1.293] in O0 §2; Explore included: `reports/probes-2026-10-11.md` P4 [MEASURED, n=1]).
@@ -117,6 +133,11 @@ State: `.claude/kbgate/<sha1 of transcript_path>.jsonl` (gitignored), one JSON o
   5. `As of:` moved, with today's date.
   6. Commit and push the branch (an attended session then runs `/dostawa`; the Routine stops here).
 - Agent use scales with the delta: triage by the main window up to ~100 bullets, above that one triage agent per ~100 bullets (max 4); edits by the main window up to ~30 rows and ~5 pages, above that editor agents as in S3.
+- **S3b coverage pass** (owner, 2026-10-12) [G1, G2]. S3 reads only the pages the base never mentioned. Pages it already cites were never re-read in full, so a gap from the first digest would survive every session. S3b closes that gap:
+  - Every page of both `llms.txt` indexes gets a row in `docs/kb-updates/<date>-coverage.tsv`, relevant or not (S3's relevance rule), with a reason. Relevant pages that S3 did not read in full are read in full by reader agents (≈ 100 pages, ≈ 20 readers [ASSUMPTION]).
+  - Each reader compares its pages with the target topic files, read in full. It proposes only facts that are missing from the base or contradict it and that change a decision, each tagged `[SOURCE: <url>, <date>]`. "Nothing found" is valid; no quotas.
+  - Readers edit nothing. Six editors (S3's file packages, one owner per file) apply the proposals with S3's edit rule. A file reaching 90 % of 28 KB is split, and the map is updated.
+  - Result: the facts land in topic files, which the read gate (S4) guards. That is why the gaps are filled in the base and not with a docs mirror or live lookups.
 - **S5**:
   - SessionStart freshness line: local `claude --version` vs `As of:` and days since the `As of:` date. `KB: STALE` at ≥ 3 versions or > 30 days. Plus `kb-update: <n> commits ahead of main` when that branch exists. No HTTP at start (the `git fetch` with timeout that the start hook already does is allowed).
   - A weekly Routine (a scheduled cloud session) runs `/kb-update` on a fixed branch `kb-update`. It pushes that branch and **does not merge**: unattended KB edits wait for an attended session, which the start line tells about them; the Routine also sends a push notification.
@@ -129,14 +150,15 @@ One session = one prompt = one branch, merged into `main` by `/dostawa`. The nex
 | S1 tooling | G3 + protection | inputs copied in; state files; `doc_check.py`; `hooks.py` (push gate, session, subagent); settings; tests; `/dostawa`; `reviewer.md`; interim map of O0–O5; `CLAUDE.md` edits | none | 1 (general-purpose · opus · high; `reviewer.md` exists only from S2, O0 §3) |
 | S2 migration | G3, G1 | `migration-map.tsv`, `kb_migrate.py` + check (every line exactly once, fact-ID multiset unchanged), references rewritten, O0–O5 deleted, keyword map | 2 navigation probes (1 general-purpose, 1 Explore · opus · low): 3 questions each, first `knowledge/` read checked in the transcript | 1 (`reviewer` · opus · high) |
 | S3 update | G2 | `/kb-update`, delta, triage merge and check, `docs-index.md`, `recheck-and-conflicts.md`, `design-rules.md`, map sizes, model-scope grep | triage: 1 per ~100 bullets, max 4 (general-purpose · opus · high); editors: 6, one owner per file pair, each applies its triage rows and fetches its new pages (general-purpose · opus · high) | 1 (`reviewer` · opus · high) |
-| S4 read gates | G1, G3 | logger, PostCompact, UserPromptSubmit, Stop, SubagentStop, fixtures, live tests in nested `claude -p` (not agents) | none outside the nested runs | 1 (`reviewer` · opus · high) |
+| S3b coverage | G1, G2 | page list and `coverage.tsv` + check, reader packages, applying order, map update, `docs-index.md` statuses | readers: 1 per ~5 pages or ~200k tokens of page text, ≈ 20, in waves of ≤ 10 (general-purpose · opus · high); editors: 6, S3's packages (general-purpose · opus · high) | 1 (`reviewer` · opus · high) |
+| S4 read gates | G1, G3 | logger, PostCompact, UserPromptSubmit, Stop, SubagentStop, test cases, live tests in nested `claude -p` (not agents) | none outside the nested runs | 1 (`reviewer` · opus · high) |
 | S5 freshness | G2 | SessionStart line, Routine (created after the owner's yes in session), `CLAUDE.md` health-check line | none | none: advisory line + Routine spec, no constraining mechanism (skeleton l. 5 asks review of mechanisms) |
 
-Total: 12 agents + up to 4 reviewers (plan v3/v2: 70).
+Total: ≈ 38 agents (12 + S3b ≈ 26) + up to 5 reviewers (plan v3/v2: 70). Six session prompts: S1, S2, S3, S3b, S4, S5.
 
 Cost [ASSUMPTION; list prices; scale from `findings.md` 2026-10-08, 3.6–8.1 USD per heavy single-file session]:
-- S1 5–10 USD; S2 4–8; S3 25–55; S4 6–12; S5 2–4.
-- **≈ 40–90 USD** in total; Routine 1–5 USD per week.
+- S1 6–12 USD (hook tests ported); S2 4–8; S3 25–55; S3b 60–160; S4 6–12; S5 2–4.
+- **≈ 100–250 USD** in total; Routine 1–5 USD per week.
 
 ## 8. FelixReborn `CLAUDE.md`: what each session changes
 Line numbers refer to the input file `claude-felixReborn-input.md`. The file is 17,986 B, 45 % of its 40 KB cap: sessions add what their changes need; no session shrinks the file to make room. Edits go through the auto-mode classifier, which may refuse (§3 fallback).
@@ -151,7 +173,7 @@ Line numbers refer to the input file `claude-felixReborn-input.md`. The file is 
 | 44 | S1 | conditional "If a SubagentStart hook injects …" → measured statement, workflow agents excepted |
 | 53, 55 | S1 | merge policy A filled in (`/dostawa`). Next step A: "the next task is the „Next task” line of `STATUS.md`; for the KB plan it names `docs/prompts/<Sn>.md`" |
 | 48 | S1 | `.claude/agents/implementer.md` → plain text "an implementer agent (not built yet)", otherwise the dead-path rule is red |
-| 64–65 | S1 | hard list = what is live: push to `main` blocked while `doc_check` is red. Placeholders for unbuilt gates stay, labelled "advice until built" (skeleton l. 6). Sandbox: "no `bwrap` in the cloud [MEASURED 2026-10-11]" |
+| 64–65 | S1 | hard list = what is live: push to `main` blocked while `doc_check` is red, or when it is not a separate Bash call, not `HEAD`, or the tracked tree is dirty; l. 65's bypass list = the `limit/…` cases of `tools/test_hooks.sh`. Placeholders for unbuilt gates stay, labelled "advice until built" (skeleton l. 6). Sandbox: "no `bwrap` in the cloud [MEASURED 2026-10-11]" |
 | 23–24, 44, 64 | S4 | read gates: one sentence each in "Start of every session", "Agents", "Enforcement and its limits" (+ what is not covered, §5) |
 | 68 | S5 | health check: freshness line at start; `/kb-update` |
 
@@ -173,6 +195,16 @@ Not touched by the plan, and still unbacked: the `ask` rules (l. 19), the Stop r
 - GitHub-semantics research agent; optional API-only PL pages.
 
 ## 10. Start
-1. Merge this branch of ClaudeEXPERT into its `main`. S1 copies `knowledge/`, `findings.md`, `reports/probes-2026-10-11.md` and these prompts from there.
-2. Open a FelixReborn cloud session (FelixReborn only) and paste `prompts/S1-tooling.md`.
-3. From S2 on, write „dalej”: `STATUS.md` names the next prompt.
+1. The owner uploads the input package to FelixReborn `main`, keeping its paths. It was built from this directory and ClaudeEXPERT `main` on 2026-10-12. Contents:
+   - `knowledge/O0…O5` from ClaudeEXPERT `main`, LF line endings. They replace the CRLF upload of 2026-10-12, whose O0 differs in content (`findings.md` 2026-10-12).
+   - `docs/prompts/`: this plan with a "Paths:" line, COMMON, S1–S5, S3b, `claude-felixReborn-input.md`.
+   - `docs/import/`:
+     - `FINDINGS-claudeexpert.md` (`findings.md`, probe paths rewritten);
+     - `probes-2026-10-11.md`;
+     - `claudeexpert-tags-and-conflicts.md` (the "Evidence tags" and "Known open conflicts" sections of ClaudeEXPERT `CLAUDE.md`, verbatim);
+     - `O0-upload-delta-2026-10-12.md` (the lines only the owner's uploaded O0 had; S3 promotes them);
+     - `foldery/` (Foldery `doc_check.py`, `hooks.py`, `test_hooks.sh`, `settings.json` and `/dostawa` as `dostawa-SKILL.md`, at ec7ce87);
+     - `MANIFEST.sha256` (checksums of every file above).
+2. The owner renames FelixReborn's `claude.md.md` to `CLAUDE.md`. Claude Code loads only that name (`findings.md` 2026-10-12 [MEASURED]).
+3. Open a FelixReborn cloud session with FelixReborn only and write „Wykonaj docs/prompts/S1-tooling.md”. S1 first checks the manifest and stops on any mismatch.
+4. From S2 on, write „dalej”: `STATUS.md` names the next prompt (S2 → S3 → S3b → S4 → S5).

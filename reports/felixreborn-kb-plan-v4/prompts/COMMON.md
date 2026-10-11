@@ -1,4 +1,4 @@
-# COMMON — shared by the KB-plan session prompts S1–S5 (FelixReborn)
+# COMMON — shared by the KB-plan session prompts S1, S2, S3, S3b, S4, S5 (FelixReborn)
 
 Every session prompt starts with: "Read `docs/prompts/COMMON.md` in full, then this prompt in full, before any other action." `CLAUDE.md` wins over this file; this file wins over nothing else. The plan is `docs/prompts/PLAN.md`; read it only when a prompt says so.
 
@@ -9,6 +9,22 @@ G1: Claude returns to the knowledge base for every topical question, not only th
 - "Read in full": the Read tool without `offset`/`limit`, or exactly `cat <path>` (no pipes, no `;`) for a file ≤ 28,000 bytes. Bash shows at most ~30,000 characters inline; a larger file through `cat` shows you only a 2 KB preview (`docs/import/probes-2026-10-11.md` P0, R0).
 - Lists headed "Read in full" are whole files; "Read in part" names the range, and the reply says it was partial. Do not read beyond the lists "to be safe"; a listed file that is missing: stop and report.
 - The knowledge base and `docs/import/` findings beat your memory; when they disagree, say so.
+
+## Access (owner, 2026-10-12)
+The owner allows exactly this, and nothing else:
+- **This repository:**
+  - write: your session branch; `main` only through `/dostawa` (merge policy A, PLAN §2);
+  - read: `origin/main`; from S5 also `origin/kb-update` (the weekly Routine's branch of this repository).
+- **Read-only on the web:**
+  - `https://code.claude.com/docs/` and `https://platform.claude.com/docs/` (`llms.txt` and `.md` pages);
+  - the public Claude Code changelog `https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md` (S3, S3b, `/kb-update`).
+- **Nothing else:** no other repository, branch, clone or `add_repo`. The ClaudeEXPERT and Foldery material the plan needs is already in `docs/import/`.
+
+**Stop rule.** Stop when any access is refused or fails: HTTP 401/403, a fetch, push or clone refused, an input file missing or with a wrong checksum.
+- Stop at once: commit and push your branch as it is (no merge into `main`). Tell the owner what was refused, where, and the exact error.
+- Never retry a 403, never use another source in its place, never work around it.
+- An agent that hits a refusal records it in its report and stops its own work. When you read that report, stop as above.
+- A 404 on a docs page is a moved page, not a refusal: find its new URL in `llms.txt`. Not found → record it and go on.
 
 ## Agents
 - Agents see only their prompt, `CLAUDE.md` (general-purpose; not Explore) and, once S1 is merged, `.claude/agent-rules.md` + the map injected at start. Put into every agent prompt: goal; files to read in full; constraints (English in files, evidence tags, no self-report as evidence, no quotas, "nothing found" is a valid result); output path; done criterion; "edit nothing outside your output path(s)".
@@ -24,4 +40,4 @@ G1: Claude returns to the knowledge base for every topical question, not only th
 - `$SCRATCH` = the session scratchpad named in the system prompt; temporary checkouts, bare remotes and patch files live there, never in the repository.
 
 ## End of every session
-Run `/dostawa` (from S1 on; S1 runs its steps by hand as its last task). `STATUS.md` "Next task" names the next prompt file (`docs/prompts/S<n+1>-….md`) with model Opus 5.5, effort high. Reply per `CLAUDE.md` "Owner rules": Polish, what is done and verified, NOT RUN, the reviewer's verdict in one line, open questions last.
+Run `/dostawa` (from S1 on; S1 runs its steps by hand as its last task). `STATUS.md` "Next task" names the next prompt file in the order S1 → S2 → S3 → S3b → S4 → S5 (`docs/prompts/<id>-….md`) with model Opus 5.5, effort high. Reply per `CLAUDE.md` "Owner rules": Polish, what is done and verified, NOT RUN, the reviewer's verdict in one line, open questions last.
