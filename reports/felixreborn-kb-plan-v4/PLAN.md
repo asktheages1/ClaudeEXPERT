@@ -15,6 +15,7 @@ Everything below serves at least one goal, named in brackets. Anything that serv
 - Structure check: the Foldery solution, ported (§3). No GitHub Actions. Claude merges into `main` itself, locally (`merge` + `git push origin main`), so the push gate has something to guard.
 - Reviews: one reviewer, Opus 5.5 high, read-only. It reports only factual errors and unmet done-criteria; nothing else is fixed or backlogged.
 - Two maps: `MAPA.md` §1 for project docs, `knowledge/CLAUDE.md` for the base. Each file appears in exactly one of them.
+- `CLAUDE.md` cap is 40 KB, not 20 KB. No rule makes a session delete content to stay under a cap; a file over its cap is split (the owner's split rule), `CLAUDE.md` excepted.
 
 ## 3. Structure check (ported from `asktheages1/foldery`: `GaleriaFolderow/tools/doc_check.py`, `.claude/hooks/hooks.py`, skill `/dostawa`) [G3, protects G1–G2]
 - **`tools/doc_check.py`**: one Python file, standard library only. Exit 1 on any error, 0 otherwise. Warnings never block.
@@ -22,7 +23,7 @@ Everything below serves at least one goal, named in brackets. Anything that serv
 
     | File | Cap (B) | Reason |
     |---|---|---|
-    | `CLAUDE.md` | 20,000 (HTML comments stripped) | skeleton l. 38. At ≥ 90 %: tell the owner, never split |
+    | `CLAUDE.md` | 40,000 (HTML comments stripped) | owner, 2026-10-11 (the skeleton's l. 38 said 20 KB; S1 corrects that line). At ≥ 90 %: tell the owner, never split |
     | `knowledge/*.md` except the map | 28,000 | must be readable whole with `cat`: Bash shows ≤ ~30,000 chars inline, above that a 2 KB preview (`reports/probes-2026-10-11.md` P0, R0 [MEASURED, n=2]) |
     | `knowledge/O[0-5]-*.md` (until S2 removes them) | 40,000 | their own header budget (O0 header) |
     | `knowledge/CLAUDE.md` (base map) | 6,500 | injected into every agent together with `agent-rules.md`. Per-field limit is 10,000 chars, overflow becomes a 2,000-char preview (O2 §A6 [S:hooks]) |
@@ -134,7 +135,7 @@ Cost [ASSUMPTION; list prices; scale from `findings.md` 2026-10-08, 3.6–8.1 US
 - **≈ 40–90 USD** in total; Routine 1–5 USD per week.
 
 ## 8. FelixReborn `CLAUDE.md`: what each session changes
-The file is 17,986 B (CRLF), just under the 90 % warning of its 20 KB cap. Net growth is not possible. Every session's edit removes at least as much as it adds and runs `doc_check` (≥ 90 % → told to the owner in the reply). Edits go through the auto-mode classifier (may refuse: §3 fallback). Line numbers refer to the input file.
+The file is 17,986 B, 45 % of its 40 KB cap: sessions add what their changes need; no session shrinks the file to make room.
 
 | Line | Session | Change |
 |---|---|---|
@@ -142,7 +143,7 @@ The file is 17,986 B (CRLF), just under the 90 % warning of its 20 KB cap. Net g
 | 7 | S1 | add: mechanisms that must run (hooks, settings, checker) live at the repository root, the only place Claude Code loads them (O0 §4); promotion to `Gotowe/` is outside the KB plan |
 | 22–24 | S1 | SessionStart line describes the real hook. "markdown ≤ 40 KB fits one Read" → "≤ 28 KB: read whole with Read or exactly `cat <path>`". `<docs>` → `docs/`. `<kb>/O0-…` → `knowledge/CLAUDE.md` (auto-loads on first touch of `knowledge/`) |
 | 30 | S1 | reviewer: "Fix or reject every finding with evidence; style findings are ignored" → "report only factual errors and unmet done-criteria; everything else is ignored, not backlogged" (owner 2026-10-11) |
-| 38 | S1 | caps → the §3 table; `doc_check` → `tools/doc_check.py`; 90 % rule and split procedure → `/dostawa` |
+| 38 | S1 | caps → the §3 table (this file 40 KB, owner 2026-10-11); `doc_check` → `tools/doc_check.py`; 90 % rule and split procedure → `/dostawa` |
 | 44 | S1 | conditional "If a SubagentStart hook injects …" → measured statement, workflow agents excepted |
 | 53, 55 | S1 | merge policy A filled in (`/dostawa`). Next step A: "the next task is the „Next task” line of `STATUS.md`; for the KB plan it names `docs/prompts/<Sn>.md`" |
 | 48 | S1 | `.claude/agents/implementer.md` → plain text "an implementer agent (not built yet)", otherwise the dead-path rule is red |

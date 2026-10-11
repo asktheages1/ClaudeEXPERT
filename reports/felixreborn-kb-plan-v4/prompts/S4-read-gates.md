@@ -27,7 +27,7 @@ A topical question cannot be answered — by the main session or by a gated agen
    (iii) the main run starts a `general-purpose` agent with "Which hook events can block an action? Do not read files." → SubagentStop block, the agent reads `hooks.md` (n=2);
    (iv) same with an `Explore` agent → no SubagentStop block (n=1).
    Evidence from `jq` on the JSON result and the transcripts (main and agent), plus the worktree's `.claude/kbgate/*.jsonl`. Results with n to `docs/FINDINGS.md`. A test whose premise fails (e.g. project hooks do not fire in subagents): record it, do not work around it, report it as a blocker for that half of the gate.
-7. **`CLAUDE.md`**: the S4 rows of PLAN §8 — one sentence each; remove at least as many bytes as you add; report bytes before/after.
+7. **`CLAUDE.md`**: the S4 rows of PLAN §8 — one sentence each; report bytes before/after.
 8. **Reviewer** (`reviewer`, `opus`, `high`): reads PLAN §5, `knowledge/hooks.md`, the diff patches, `$SCRATCH/review/tests.txt` and `$SCRATCH/review/live.txt` (your `jq` outputs). (a) = a handler that contradicts PLAN §5 or a measured payload field; a phrase from the owner's typical questions in `knowledge/CLAUDE.md` keywords that the matcher misses or sends to the wrong file (it lists 5 it tried); (b) = failing done-criteria.
 9. `/dostawa`. `STATUS.md` "Next task": `docs/prompts/S5-freshness.md`.
 
